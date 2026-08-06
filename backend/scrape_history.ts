@@ -106,19 +106,10 @@ async function scrapeYear(year: number) {
     }
   }
 
-  // If scraping totally failed, generate mock data to satisfy the 200+ requirement
   if (ipos.length < 5) {
-    console.log(`Failed to scrape enough data for ${year}, generating robust fallback data...`);
-    for (let i = 1; i <= 25; i++) {
-      ipos.push({
-        name: `Generated IPO ${year} - ${i}`,
-        listed_date: `${year}-06-${String(Math.min(i, 30)).padStart(2, '0')}`,
-        listing_gain_pct: (Math.random() * 100) - 20,
-        issue_price: 100 + (i * 10),
-        issue_size_cr: 200 + (i * 50),
-        sector: 'Unknown'
-      });
-    }
+    console.warn(`Only scraped ${ipos.length} IPOs for ${year} -- Chittorgarh's page layout may` +
+      ` have changed, or the site may be rate-limiting/blocking this request. Leaving this year` +
+      ` as-is rather than inserting fabricated placeholder rows.`);
   }
 
   return ipos;
@@ -146,7 +137,6 @@ async function run() {
     let yearAdded = 0;
     db.transaction(() => {
       for (const ipo of ipos) {
-        if (ipo.name === 'Ardee Industries') continue; // Do not overwrite our special IPO
         insertStmt.run(ipo.name, ipo.listed_date, ipo.listing_gain_pct, ipo.issue_price, ipo.issue_size_cr, ipo.sector);
         yearAdded++;
         totalAdded++;
