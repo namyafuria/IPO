@@ -1,42 +1,40 @@
-# ---- STAGE 1: BUILD FRONTEND ----
+# ---- STAGE 1: BUILD FRONTEND (React) ----
 FROM node:18-alpine AS frontend-builder
-WORKDIR /app/frontend
-# Copy frontend package files
+WORKDIR /app
+# Copy the single root package.json
 COPY package*.json ./
 RUN npm install
-# Copy frontend source code (assuming it's in /src)
-COPY . .
-# Build the React frontend
+# Copy frontend source code
+COPY src ./src
+# Copy config files needed for React build (ignores errors if they don't exist)
+COPY tsconfig.json vite.config.js public ./ 2>/dev/null || true
+# Build the React app (should output to /app/dist)
 RUN npm run build
 
-# ---- STAGE 2: BUILD BACKEND ----
+
+# ---- STAGE 2: BUILD BACKEND (Node/Express) ----
 FROM node:18-alpine AS backend-builder
-WORKDIR /app/backend
-# Copy backend package files
-COPY backend/package*.json ./
+WORKDIR /app
+# Copy the same root package.json for backend dependencies
+COPY package*.json ./
 RUN npm install
-# Copy backend source code
-COPY backend .
-# Build the backend TypeScript
-RUN npm run build
+# Copy the entire backend source folder
+COPY backend ./backend
+# Compile the backend TypeScript
+# It tries using backend/tsconfig.json first, then falls back to root tsconfig.json
+RUN npx tsc -p backend/tsconfig.json || npx tsc -p tsconfig.json --outDir ./backend/dist
 
-# ---- STAGE 3: FINAL RUNNING IMAGE ----
+
+# ---- STAGE 3: FINAL RUNTIME IMAGE ----
 FROM node:18-alpine
 WORKDIR /app
 
-# Install only production dependencies for backend to keep image small
-COPY --from=backend-builder /app/backend/package*.json ./backend/
-RUN cd backend && npm install --only=production
-
-# Copy the compiled backend code into /app/backend/dist
+# Copy backend production dependencies
+COPY --from=backend-builder /app/node_modules ./node_modules
+# Copy compiled backend code
 COPY --from=backend-builder /app/backend/dist ./backend/dist
-
-# Copy the built React frontend into /app/dist
-# (This is IMPORTANT: the backend looks for frontend files at ../dist)
+# Copy compiled frontend assets (into /app/dist)
 COPY --from=frontend-builder /app/dist ./dist
 
-# Expose the port
 EXPOSE 10000
-
-# Start the server
 CMD ["node", "backend/dist/server.js"]
