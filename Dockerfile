@@ -1,5 +1,6 @@
 # ---- STAGE 1: BUILD FRONTEND (React) ----
-FROM node:18-alpine AS frontend-builder
+# Switched FROM node:18-alpine to node:18-slim to fix native module compilation failures
+FROM node:18-slim AS frontend-builder
 WORKDIR /app
 # Copy the single root package.json
 COPY package*.json ./
@@ -11,9 +12,8 @@ COPY tsconfig.json vite.config.js public ./ 2>/dev/null || true
 # Build the React app (should output to /app/dist)
 RUN npm run build
 
-
 # ---- STAGE 2: BUILD BACKEND (Node/Express) ----
-FROM node:18-alpine AS backend-builder
+FROM node:18-slim AS backend-builder
 WORKDIR /app
 # Copy the same root package.json for backend dependencies
 COPY package*.json ./
@@ -24,9 +24,8 @@ COPY backend ./backend
 # It tries using backend/tsconfig.json first, then falls back to root tsconfig.json
 RUN npx tsc -p backend/tsconfig.json || npx tsc -p tsconfig.json --outDir ./backend/dist
 
-
 # ---- STAGE 3: FINAL RUNTIME IMAGE ----
-FROM node:18-alpine
+FROM node:18-slim
 WORKDIR /app
 
 # Copy backend production dependencies
