@@ -25,14 +25,19 @@ export default function IPODetail() {
     });
   }, [name]);
 
-  const handleFetchMissing = async () => {
+const handleFetchMissing = async () => {
     if (!name) return;
     setRefreshing(true);
+    setFetchMessage(null);
     try {
       const response = await axios.get(`/api/fetch-missing?name=${encodeURIComponent(name)}`);
-      setIpo(response.data);
+      setIpo(response.data.ipo);
+      if (!response.data.updated) {
+        setFetchMessage("Couldn't find a matching source page for this IPO yet.");
+      }
     } catch (err) {
       console.error(err);
+      setFetchMessage('Something went wrong. Try again in a bit.');
     } finally {
       setRefreshing(false);
     }
