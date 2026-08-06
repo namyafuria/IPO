@@ -6,9 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
-RUN npm ci
-
-COPY . .
+RUN npm install
 RUN npm run build
 
 # --- Runtime stage -------------------------------------------------------
@@ -18,11 +16,11 @@ ENV NODE_ENV=production
 ENV DB_DIR=/data
 
 # Same native build deps are needed here since better-sqlite3 ships as a
-# native module and `npm ci --omit=dev` will rebuild/relink it for this image.
+# native module and needs to be rebuilt/relinked for this image.
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 COPY --from=build /app/dist ./dist
 
