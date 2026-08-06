@@ -316,4 +316,90 @@ export async function fetchIPODetailFromChittorgarh(ipoName: string) {
     const bandText = extractRawFieldText($, ['price band']);
     if (bandText) {
       const nums = bandText.replace(/,/g, '').match(/([\d.]+)/g);
-      if (nums && nums.length >=
+      if (nums && nums.length >= 2) {
+        price_band_low = parseFloat(nums[0]);
+        price_band_high = parseFloat(nums[nums.length - 1]);
+      }
+    }
+
+    db.prepare(`
+      UPDATE ipos SET 
+        issue_price = COALESCE(?, issue_price),
+        issue_size_cr = COALESCE(?, issue_size_cr),
+        pe_ratio = COALESCE(?, pe_ratio),
+        roe = COALESCE(?, roe),
+        debt_equity = COALESCE(?, debt_equity),
+        qib_sub = COALESCE(?, qib_sub),
+        hni_sub = COALESCE(?, hni_sub),
+        rii_sub = COALESCE(?, rii_sub),
+        anchor_pct = COALESCE(?, anchor_pct),
+        gmp_percent = COALESCE(?, gmp_percent),
+        subscription_total = COALESCE(?, subscription_total),
+        price_band_low = COALESCE(?, price_band_low),
+        price_band_high = COALESCE(?, price_band_high),
+        source_url = ?,
+        data_source = 'Chittorgarh',
+        data_fetched_at = datetime('now'),
+        last_updated = datetime('now')
+      WHERE name = ?
+    `).run(
+      issue_price, issue_size_cr, pe_ratio, roe, debt_equity,
+      qib_sub, hni_sub, rii_sub, anchor_pct, gmp_percent, subscription_total,
+      price_band_low, price_band_high,
+      detailUrl, ipoName
+    );
+
+    console.log(`Successfully parsed and updated ${ipoName}`);
+    return { ipo: db.prepare('SELECT * FROM ipos WHERE name = ?').get(ipoName), updated: true };
+
+  } catch (error: any) {
+    console.error(`Failed to fetch/parse detail page for ${ipoName}:`, error.message);
+    return { ipo, updated: false };
+  }
+}
+
+export async function fetchLiveSubscriptionAndGMP(ipoName: string) {
+  console.log(`Fetching live data for: ${ipoName}`);
+  const db = getDb();
+
+  try {
+    const response = await axios.get(CHITTORGARH_MAIN, { headers: HEADERS, timeout: 10000 });
+    const $ = cheerio.load(response.data);
+
+    let bestSub: number | null = null;
+    let bestScore = 0;
+
+    $('table tr').each((_, tr) => {
+      const $tr = $(tr);
+      const rowText = $tr.text();
+      const nameCellText = $tr.find('a').first().text().trim() || $tr.find('td').first().text().trim();
+      if (!nameCellText) return;
+
+      const score = nameMatchScore(nameCellText, ipoName);
+      if (score < 0.6 || score < bestScore) return;
+
+      const matchSub = rowText.match(/([\d.]+)\s*x/i);
+      if (matchSub) {
+        bestScore = score;
+        bestSub = parseFloat(matchSub[1]);
+      }
+    });
+
+    if (bestSub !== null) {
+      db.prepare(`
+        UPDATE ipos SET 
+          subscription_total = ?, 
+          data_fetched_at = datetime('now'),
+          last_updated = datetime('now') 
+        WHERE name = ?
+      `).run(bestSub, ipoName);
+    }
+  } catch (error: any) {
+    console.error('Failed to fetch live sub:', error.message);
+  }
+}
+
+export async function verifyAndCorrectData(ipoName: string) {
+  console.log(`Verifying data for: ${ipoName}`);
+  return fetchIPODetailFromChittorgarh(ipoName);
+}
