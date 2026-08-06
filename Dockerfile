@@ -1,39 +1,37 @@
-# ---- STAGE 1: BUILD FRONTEND (React) ----
-# Switched FROM node:18-alpine to node:18-slim to fix native module compilation failures
-FROM node:18-slim AS frontend-builder
+# ---- STAGE 1: BUILD FRONTEND & BACKEND ----
+# We use the FULL node:18 image here to ensure we have g++, make, and python3 
+# to successfully compile native modules like better-sqlite3.
+FROM node:18 AS builder
 WORKDIR /app
-# Copy the single root package.json
+
+# Copy the single root package.json and install ALL dependencies (dev + prod) once.
+# This avoids running 'npm install' twice, preventing Out of Memory (OOM) errors on Render's free tier.
 COPY package*.json ./
 RUN npm install
-# Copy frontend source code
+
+# --- Build Frontend ---
 COPY src ./src
 # Copy config files needed for React build (ignores errors if they don't exist)
 COPY tsconfig.json vite.config.js public ./ 2>/dev/null || true
-# Build the React app (should output to /app/dist)
 RUN npm run build
 
-# ---- STAGE 2: BUILD BACKEND (Node/Express) ----
-FROM node:18-slim AS backend-builder
-WORKDIR /app
-# Copy the same root package.json for backend dependencies
-COPY package*.json ./
-RUN npm install
-# Copy the entire backend source folder
+# --- Build Backend ---
 COPY backend ./backend
 # Compile the backend TypeScript
-# It tries using backend/tsconfig.json first, then falls back to root tsconfig.json
 RUN npx tsc -p backend/tsconfig.json || npx tsc -p tsconfig.json --outDir ./backend/dist
 
-# ---- STAGE 3: FINAL RUNTIME IMAGE ----
+
+# ---- STAGE 2: FINAL RUNTIME IMAGE ----
+# We use node:18-slim here because the runtime does NOT need compilers.
 FROM node:18-slim
 WORKDIR /app
 
-# Copy backend production dependencies
-COPY --from=backend-builder /app/node_modules ./node_modules
+# Copy production dependencies from the builder
+COPY --from=builder /app/node_modules ./node_modules
 # Copy compiled backend code
-COPY --from=backend-builder /app/backend/dist ./backend/dist
+COPY --from=builder /app/backend/dist ./backend/dist
 # Copy compiled frontend assets (into /app/dist)
-COPY --from=frontend-builder /app/dist ./dist
+COPY --from=builder /app/dist ./dist
 
 EXPOSE 10000
 CMD ["node", "backend/dist/server.js"]
