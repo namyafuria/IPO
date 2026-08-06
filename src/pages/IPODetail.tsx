@@ -136,8 +136,8 @@ const handleFetchMissing = async () => {
         <div className="bg-black/30 px-6 py-4 border-t border-white/5 flex flex-col gap-4">
           <div className="flex items-start space-x-3">
             {fetchMessage && (
-              <p className="text-xs text-amber-400 mb-2">{fetchMessage}</p>
-            )}
+  <p className="text-xs text-amber-400 mb-2">{fetchMessage}</p>
+)}
             <Info className="w-5 h-5 text-zinc-500 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-zinc-500 flex-1">
               <p><strong>Data Source:</strong> {ipo.data_source || 'Unknown'}</p>
