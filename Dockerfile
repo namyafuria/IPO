@@ -1,34 +1,42 @@
-# --- Build stage -------------------------------------------------------
-FROM node:22-bookworm-slim AS build
-WORKDIR /app
-
-# System deps needed to compile better-sqlite3's native bindings
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
-
-COPY package.json package-lock.json ./
+# ---- STAGE 1: BUILD FRONTEND ----
+FROM node:18-alpine AS frontend-builder
+WORKDIR /app/frontend
+# Copy frontend package files
+COPY package*.json ./
 RUN npm install
-
+# Copy frontend source code (assuming it's in /src)
 COPY . .
+# Build the React frontend
 RUN npm run build
 
-# --- Runtime stage -------------------------------------------------------
-FROM node:22-bookworm-slim AS runtime
+# ---- STAGE 2: BUILD BACKEND ----
+FROM node:18-alpine AS backend-builder
+WORKDIR /app/backend
+# Copy backend package files
+COPY backend/package*.json ./
+RUN npm install
+# Copy backend source code
+COPY backend .
+# Build the backend TypeScript
+RUN npm run build
+
+# ---- STAGE 3: FINAL RUNNING IMAGE ----
+FROM node:18-alpine
 WORKDIR /app
-ENV NODE_ENV=production
-ENV DB_DIR=/data
 
-# Same native build deps are needed here since better-sqlite3 ships as a
-# native module and needs to be rebuilt/relinked for this image.
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+# Install only production dependencies for backend to keep image small
+COPY --from=backend-builder /app/backend/package*.json ./backend/
+RUN cd backend && npm install --only=production
 
-COPY package.json package-lock.json ./
-RUN npm install --omit=dev
+# Copy the compiled backend code into /app/backend/dist
+COPY --from=backend-builder /app/backend/dist ./backend/dist
 
-COPY --from=build /app/dist ./dist
+# Copy the built React frontend into /app/dist
+# (This is IMPORTANT: the backend looks for frontend files at ../dist)
+COPY --from=frontend-builder /app/dist ./dist
 
-# Persistent volume for the SQLite database -- mount this at your host's
-# persistent disk/volume, or the DB resets on every deploy/restart.
-VOLUME /data
+# Expose the port
+EXPOSE 10000
 
-EXPOSE 3000
-CMD ["node", "dist/server.cjs"]
+# Start the server
+CMD ["node", "backend/dist/server.js"]
