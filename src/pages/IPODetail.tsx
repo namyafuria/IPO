@@ -10,6 +10,7 @@ export default function IPODetail() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fetchMessage, setFetchMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!name) return;
