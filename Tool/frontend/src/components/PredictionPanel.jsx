@@ -22,6 +22,9 @@ export default function PredictionPanel({
   defaultSubscription,
   defaultGmp,
   actualGainPct,
+  subscriptionOverride,
+  gmpOverride,
+  onOverrideChange,
 }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -44,10 +47,20 @@ export default function PredictionPanel({
     [companyName]
   )
 
+  // Re-run whenever the company changes, or whenever the shared override
+  // values change (e.g. this panel's own "re-run with these" click, which
+  // now also propagates up to App via onOverrideChange).
   useEffect(() => {
-    runPredict()
+    runPredict({ subscription: subscriptionOverride, gmp: gmpOverride })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyName])
+  }, [companyName, subscriptionOverride, gmpOverride])
+
+  const handleApply = useCallback(
+    (overrides) => {
+      onOverrideChange?.(overrides.subscription, overrides.gmp)
+    },
+    [onOverrideChange]
+  )
 
   const buckets = data ? extract(data).buckets : []
   const category = data?.issue_category
@@ -80,7 +93,7 @@ export default function PredictionPanel({
         <OverrideInputs
           defaultSubscription={defaultSubscription}
           defaultGmp={defaultGmp}
-          onApply={runPredict}
+          onApply={handleApply}
           loading={loading}
         />
       </div>

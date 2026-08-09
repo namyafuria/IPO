@@ -12,6 +12,8 @@ export default function App() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [searched, setSearched] = useState(false)
+  const [subscriptionOverride, setSubscriptionOverride] = useState(null)
+  const [gmpOverride, setGmpOverride] = useState(null)
 
   async function handleSearch(name) {
     setLoading(true)
@@ -20,6 +22,8 @@ export default function App() {
     try {
       const data = await getCompany(name)
       setResult(data)
+      setSubscriptionOverride(null)
+      setGmpOverride(null)
     } catch (err) {
       setResult(null)
       setError(err instanceof ApiError ? err.message : 'Something went wrong.')
@@ -87,10 +91,18 @@ export default function App() {
                 defaultSubscription={result.record.subscription_total}
                 defaultGmp={result.record.gmp_percent}
                 actualGainPct={result.record.listing_day_gain_pct}
+                subscriptionOverride={subscriptionOverride}
+                gmpOverride={gmpOverride}
+                onOverrideChange={(sub, gmp) => {
+                  setSubscriptionOverride(sub)
+                  setGmpOverride(gmp)
+                }}
               />
               <TrajectoryPanel
                 companyName={result.record.company_name}
                 defaultSubscription={result.record.subscription_total}
+                subscriptionOverride={subscriptionOverride}
+                gmpOverride={gmpOverride}
                 record={result.record}
               />
             </div>

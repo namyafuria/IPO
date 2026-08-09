@@ -37,7 +37,7 @@ function actualForDay(record, day) {
   return { price: dayPrice, gainPct: ((dayPrice - basisPrice) / basisPrice) * 100 }
 }
 
-export default function TrajectoryPanel({ companyName, defaultSubscription, record }) {
+export default function TrajectoryPanel({ companyName, defaultSubscription, subscriptionOverride, gmpOverride, record }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -59,10 +59,16 @@ export default function TrajectoryPanel({ companyName, defaultSubscription, reco
     [companyName]
   )
 
+  // Re-run whenever the company changes, or whenever either shared
+  // override (lifted up to App, set from the listing-day panel's
+  // "re-run with these") changes. Falls back to the record's stored
+  // subscription_total when no override is active; gmp has no stored
+  // fallback here since the backend already applies its own fallback
+  // to record.gmp_percent when gmp is omitted.
   useEffect(() => {
-    run({ subscription: defaultSubscription })
+    run({ subscription: subscriptionOverride ?? defaultSubscription, gmp: gmpOverride })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyName])
+  }, [companyName, subscriptionOverride, gmpOverride])
 
   const horizons = data ? normalizeHorizons(data).sort((a, b) => a.day - b.day) : []
   const subProvisional = data?.inputs_used?.subscription_provisional
