@@ -26,6 +26,21 @@ richest variant available for a given company at inference time and
 fall back to a plainer one when a feature is missing -- same pattern
 as Problem A's v13 -> v13_gmp split.
 
+ADDED 2026-08-09 -- "recent_v1" variant: subset-confound testing (see
+predict_trajectory.py's PREFER_RECENT / PREFER_GMP notes) found that for
+some category/horizon pairs, most of gmp_v1's apparent edge over the
+base model was actually just the gmp_percent-available row subset (a
+proxy for "recent, well-tracked IPO") rather than gmp_percent as a
+feature -- and for Mainboard day10 specifically, gmp_percent as a
+feature actively made predictions WORSE than just training the base
+features on that same subset. recent_v1 uses the exact same features as
+v1 (sector + subscription_total, no gmp_percent) but restricts the
+TRAINING population to gmp_percent-available rows via the new
+`train_filter_cols` mechanism -- so it needs no gmp_percent value at
+inference time and can be applied to any company. See train_one()'s
+handling of `train_filter_cols` vs `requires`: the former filters which
+rows train the model, the latter also adds the column as a model input.
+
 Target (per project plan): % change from price_day1 (listing-day
 close), NOT issue price -- day1 itself stays Problem A's job. Fixed
 bucket edges across every horizon and category:
@@ -80,18 +95,42 @@ FEATURE_SETS = [
         "log_cols": ["subscription_total"],
         "scale_cols": [],
         "requires": [],
+        "train_filter_cols": [],
+    },
+    {
+        # Base features only (sector + subscription_total) -- NOT gmp_percent
+        # as a feature -- but training rows restricted to the same
+        # gmp_percent-available population as the gmp_v1 variant below.
+        # Added 2026-08-09 after subset-confound testing showed that for
+        # some category/horizon pairs (see PREFER_RECENT in
+        # predict_trajectory.py), most or all of the gmp variant's apparent
+        # edge over the base model was actually this row subset (a proxy
+        # for "recent, well-tracked IPO"), not gmp_percent itself -- and for
+        # at least one pair (Mainboard day10) gmp_percent as a FEATURE
+        # actively hurt relative to just training the base features on this
+        # subset. Because gmp_percent is only used to select training rows
+        # here, not as a model input, this variant needs no gmp value at
+        # inference time -- it can be applied to any company regardless of
+        # whether that company's GMP is known.
+        "suffix": "recent_v1",
+        "log_cols": ["subscription_total"],
+        "scale_cols": [],
+        "requires": [],
+        "train_filter_cols": ["gmp_percent"],
     },
     {
         "suffix": "gmp_v1",
         "log_cols": ["subscription_total"],
         "scale_cols": ["gmp_percent"],
         "requires": ["gmp_percent"],
+        "train_filter_cols": [],
     },
     {
         "suffix": "gmp_nifty_v1",
         "log_cols": ["subscription_total"],
         "scale_cols": ["gmp_percent", "nifty_trend_pre_listing"],
         "requires": ["gmp_percent", "nifty_trend_pre_listing"],
+        "train_filter_cols": [],
     },
 ]
 
@@ -173,6 +212,15 @@ def train_one(df: pd.DataFrame, category: str, horizon: int, feature_set: dict):
     sub = df[df.issue_category == category].copy()
     for col in feature_set["requires"]:
         sub = sub[sub[col].notna()]
+    # train_filter_cols: restrict the TRAINING population to rows where
+    # these columns are non-null, same as `requires`, but do NOT add them
+    # to feature_cols below -- used for recent_v1, where gmp_percent's
+    # presence is a population filter (proxy for data recency/quality),
+    # not a model input. A row filtered out here still gets predictions
+    # from this model at inference time; nothing about inference requires
+    # this column to be populated.
+    for col in feature_set.get("train_filter_cols", []):
+        sub = sub[sub[col].notna()]
     sub = sub.reset_index(drop=True)
 
     n = len(sub)
@@ -235,6 +283,14 @@ def train_one(df: pd.DataFrame, category: str, horizon: int, feature_set: dict):
     if "nifty_trend_pre_listing" in feature_set["requires"]:
         feature_desc.append("nifty_trend_pre_listing (standard-scaled)")
 
+    train_filter_note = ""
+    if feature_set.get("train_filter_cols"):
+        train_filter_note = (
+            f" Training population restricted to rows with non-null "
+            f"{', '.join(feature_set['train_filter_cols'])} (used as a population "
+            f"filter only -- NOT a model feature; no such value is required at inference)."
+        )
+
     return {
         "model": final_pipe,
         "features": feature_desc,
@@ -258,6 +314,7 @@ def train_one(df: pd.DataFrame, category: str, horizon: int, feature_set: dict):
             f"{len(EXCLUDED_COMPANIES)} row(s) excluded pending verification: {EXCLUDED_COMPANIES}. "
             "Walk-forward TimeSeriesSplit over listing_date order; naive baseline = "
             "train-fold class frequency predicted for every test row."
+            f"{train_filter_note}"
         ),
     }
 

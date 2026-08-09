@@ -21,34 +21,44 @@ IMPORTANT -- GMP variant is NOT always better, and is NOT always used.
 Retrained + re-validated this session (2026-08-09) comparing each
 variant's walk-forward accuracy edge over its own naive baseline:
 
-    category/day     base edge   gmp edge
-    Mainboard/day2    +0.012     -0.034   <- gmp WORSE, do not use
-    Mainboard/day3    +0.005     -0.006   <- gmp WORSE, do not use
-    Mainboard/day5    +0.034     +0.079   <- gmp clearly better, USE
-    Mainboard/day10   -0.014     +0.000   <- gmp better (ties naive vs
-                                              losing to it), USE
-    SME/day2          +0.014     +0.002   <- gmp WORSE, do not use
-    SME/day3          -0.064     -0.055   <- gmp slightly less bad, but
-                                              both still well below naive
-                                              -- not worth the added
-                                              complexity, do not use
-    SME/day5          -0.064     -0.048   <- same as above, do not use
-    SME/day10         -0.031     -0.031   <- no difference, do not use
+    category/day     base edge   gmp edge   recent edge (base feats,
+                                             gmp-subset population only)
+    Mainboard/day2    +0.012     -0.034     +0.018
+    Mainboard/day3    +0.005     -0.006     +0.000
+    Mainboard/day5    +0.034     +0.079     +0.070
+    Mainboard/day10   -0.014     +0.000     +0.018   <- recent_v1 wins, USE
+    SME/day2          +0.014     +0.002     n/a
+    SME/day3          -0.064     -0.055     n/a  <- both still below naive
+    SME/day5          -0.064     -0.048     n/a  <- both still below naive
+    SME/day10         -0.031     -0.031     n/a
 
-Only Mainboard day5 and Mainboard day10 use the GMP variant. Every
-other horizon/category still uses the base (sector + subscription_total
-only) model -- adding GMP there measurably hurt or did nothing.
+Mainboard day5 still uses the gmp variant (base +3.4pt, gmp +7.9pt --
+genuinely gmp-driven, not just the subset, per the isolation test in
+project plan §75). Mainboard day10 switched from gmp_v1 to recent_v1:
+the gmp variant only tied naive (+0.000), while training base features
+(no gmp_percent as an input) on that SAME row subset actually beat naive
+outright (+0.018) -- meaning gmp_percent as a feature was making day10
+WORSE, not better, once the row-subset confound is controlled for. Every
+other horizon/category still uses the base (sector + subscription_total,
+full population) model.
+
 A nifty_trend_pre_listing-augmented variant was also trained and
 tested; it did not clearly outperform the GMP-only variant anywhere
 and was NOT wired in here to keep the model set simple. Its .pkl files
-still exist if this is revisited later.
+still exist if this is revisited later. A standalone nifty-only variant
+(no gmp) was also tested in project plan §75 and showed a modest,
+consistent SME edge (~1-2pt, still below naive on its own) -- not yet
+wired in, kept as a reserve option for a future session.
 
 Caveat carried over from the original training session: this
 comparison is confounded by the GMP variant being trained on a
 different (smaller, ~85%-of-rows) subset than the base model -- some
 of the apparent GMP benefit could be that cleaner subset rather than
-GMP itself. Treat this as a real, reproduced improvement worth using,
-not a fully isolated causal claim.
+GMP itself. This was explicitly isolated for Mainboard day5/day10 (see
+above); Mainboard day5's edge is genuinely GMP-driven, day10's was not
+and has been corrected accordingly. SME's subset effect was similarly
+re-checked and found small (~1pt either way) -- not worth the added
+complexity there, matching the original call.
 """
 
 import sys
@@ -79,17 +89,26 @@ CATEGORIES = ["Mainboard", "SME"]
 # Horizons whose validated top-bucket accuracy beat the naive baseline in
 # training (see rebuild_problem_b.py's printed results, session of
 # 2026-08-09), USING the variant actually selected for that horizon by
-# PREFER_GMP below. Mainboard day10 is deliberately NOT included here even
-# though its gmp variant is used (PREFER_GMP) -- gmp only brought it up to
-# an exact TIE with naive (edge +0.000), not a genuine win, so it's still
-# flagged low-confidence to the caller despite using the better model.
-_RELIABLE = {("Mainboard", 2), ("Mainboard", 3), ("Mainboard", 5)}
+# PREFER_GMP/PREFER_RECENT below.
+_RELIABLE = {("Mainboard", 2), ("Mainboard", 3), ("Mainboard", 5), ("Mainboard", 10)}
 
 # (category, horizon) pairs where the GMP-augmented model measurably beat
-# the base model on walk-forward validation -- see docstring table above.
-# Every other pair uses the base model even when a gmp variant file
-# exists, because gmp measurably hurt or did nothing there.
-PREFER_GMP = {("Mainboard", 5), ("Mainboard", 10)}
+# the base model on walk-forward validation -- see rebuild_problem_b.py's
+# docstring table. Every other pair uses the base model even when a gmp
+# variant file exists, because gmp measurably hurt or did nothing there.
+PREFER_GMP = {("Mainboard", 5)}
+
+# (category, horizon) pairs where the "recent_v1" variant -- base
+# features (sector + subscription_total), TRAINING population restricted
+# to gmp_percent-available rows, but gmp_percent NOT used as a model
+# input -- beat both the plain base model and the gmp variant. Added
+# 2026-08-09 after subset-confound testing showed gmp_v1's day10 edge was
+# actually this row subset, not gmp_percent as a feature; using
+# gmp_percent as a feature for day10 was measurably worse than training
+# on the same subset without it. This variant needs NO gmp_percent value
+# at inference -- see predict_trajectory_for_company's model selection
+# below, which checks this before PREFER_GMP.
+PREFER_RECENT = {("Mainboard", 10)}
 
 
 def _load(path: Path):
@@ -112,6 +131,11 @@ _MODELS_BASE = {
 }
 _MODELS_GMP = {
     (cat, h): _load(BACKEND_DIR / f"{cat.lower()}_bucket_model_day{h}_gmp_v1.pkl")
+    for cat in CATEGORIES
+    for h in HORIZONS
+}
+_MODELS_RECENT = {
+    (cat, h): _load(BACKEND_DIR / f"{cat.lower()}_bucket_model_day{h}_recent_v1.pkl")
     for cat in CATEGORIES
     for h in HORIZONS
 }
@@ -241,8 +265,19 @@ def predict_trajectory_for_company(
     horizons_out = {}
     missing = []
     for h in HORIZONS:
-        use_gmp = (category, h) in PREFER_GMP and gmp_percent is not None and _MODELS_GMP.get((category, h)) is not None
-        model_pkg = _MODELS_GMP.get((category, h)) if use_gmp else _MODELS_BASE.get((category, h))
+        use_recent = (category, h) in PREFER_RECENT and _MODELS_RECENT.get((category, h)) is not None
+        use_gmp = (
+            not use_recent
+            and (category, h) in PREFER_GMP
+            and gmp_percent is not None
+            and _MODELS_GMP.get((category, h)) is not None
+        )
+        if use_recent:
+            model_pkg = _MODELS_RECENT.get((category, h))
+        elif use_gmp:
+            model_pkg = _MODELS_GMP.get((category, h))
+        else:
+            model_pkg = _MODELS_BASE.get((category, h))
         if model_pkg is None:
             missing.append(h)
             continue
