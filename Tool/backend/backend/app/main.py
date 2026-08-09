@@ -96,21 +96,30 @@ def predict_company(
 def predict_trajectory(
     name: str,
     subscription: Optional[float] = None,
+    gmp: Optional[float] = None,
 ):
     """Problem B: post-listing price-trajectory bucket prediction (day2/
     day3/day5/day10 relative to the day1 close) for a company already in
     the DB. Same DB-only lookup as /api/predict -- call GET
     /api/company/{name} first if the company might be new.
 
+    Query params: `subscription` and `gmp` (same plain names as
+    /api/predict -- NOT `subscription_override`/`gmp_override`; that suffix
+    only exists on the underlying Python function's keyword args). `gmp`
+    only actually changes the output for Mainboard day5/day10 (the two
+    horizons wired to the GMP-augmented model, per PREFER_GMP in
+    predict_trajectory.py) -- for every other category/horizon it's
+    accepted but has no effect on which model is selected.
+
     Returns all 4 horizons in one call, each flagged with `reliable` /
-    `reliability_note`: validated training only clearly beat the naive
-    baseline for Mainboard day2/day3/day5. Mainboard day10 and every SME
-    horizon did NOT, and are returned as low-confidence/exploratory --
-    the UI should surface that caveat rather than presenting all 4
-    horizons with equal confidence.
+    `reliability_note`: validated training beat the naive baseline for
+    Mainboard day2/day3/day5/day10 (day5/day10 via the GMP variant) and
+    SME day2. SME day3/day5/day10 did NOT, and are returned as
+    low-confidence/exploratory -- the UI should surface that caveat
+    rather than presenting all 4 horizons with equal confidence.
     """
     try:
-        return predict_trajectory_for_company(name, subscription_override=subscription)
+        return predict_trajectory_for_company(name, subscription_override=subscription, gmp_override=gmp)
     except TrajectoryPredictionError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

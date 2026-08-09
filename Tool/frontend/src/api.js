@@ -37,16 +37,16 @@ export function refreshCompany(name) {
 
 export function getPrediction(name, { subscription, gmp } = {}) {
   const params = new URLSearchParams()
-  if (subscription != null) params.set('subscription_override', subscription)
-  if (gmp != null) params.set('gmp_override', gmp)
+  if (subscription != null) params.set('subscription', subscription)
+  if (gmp != null) params.set('gmp', gmp)
   const qs = params.toString()
   return request(`/api/predict/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`)
 }
 
 export function getTrajectory(name, { subscription, gmp } = {}) {
   const params = new URLSearchParams()
-  if (subscription != null) params.set('subscription_override', subscription)
-  if (gmp != null) params.set('gmp_override', gmp)
+  if (subscription != null) params.set('subscription', subscription)
+  if (gmp != null) params.set('gmp', gmp)
   const qs = params.toString()
   return request(`/api/predict_trajectory/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`)
 }
