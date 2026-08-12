@@ -70,6 +70,7 @@ not difflib -- for the documented false-positive reasons.
    why (IPOGURU_API_KEY was never set) and for the two parsing bugs fixed
    while building it.
 """
+import logging
 import re
 import sqlite3
 import time
@@ -79,6 +80,8 @@ import requests
 from bs4 import BeautifulSoup
 
 from . import config
+
+logger = logging.getLogger("ipo_tool.gmp_sync")
 
 HEADERS_IPOGYANI = {"User-Agent": "ipo-analyser-personal-project/1.0 (research use)"}
 HEADERS_IPOWATCH = {"User-Agent": "Mozilla/5.0 (research script)"}
@@ -336,14 +339,20 @@ def _ipogyani_fetch_live_status():
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
 
+    all_cards = soup.find_all("a", href=re.compile(r"^/ipo/[a-z0-9-]+$"))
     out = []
-    for a in soup.find_all("a", href=re.compile(r"^/ipo/[a-z0-9-]+$")):
+    n_unmatched = 0
+    sample_unmatched_text = None
+    for a in all_cards:
         slug_m = re.search(r"^/ipo/([a-z0-9-]+)$", a["href"])
         if slug_m is None:
             continue
         text = a.get_text(strip=True)
         m = _LIVE_CARD_RE.search(text)
         if m is None:
+            n_unmatched += 1
+            if sample_unmatched_text is None:
+                sample_unmatched_text = text[:200]
             continue
 
         year = m.group("year")
@@ -378,6 +387,33 @@ def _ipogyani_fetch_live_status():
             "gmp_percent": float(m.group("gmp_pct")),
             "ai_pred_pct": float(m.group("ai_pct")),
         })
+
+    # DIAGNOSTIC (2026-08-12) -- this page is currently returning 0 matches
+    # in production for reasons not yet confirmed (works when fetched
+    # directly, but Render's plain requests.get() sees something
+    # different -- possibly this page renders its cards client-side via
+    # JS, unlike /ipo-gmp-today which is confirmed server-rendered).
+    # These log lines exist to tell the three failure modes apart without
+    # more guessing:
+    if not all_cards:
+        logger.warning(
+            "ipogyani /live-ipo: found 0 <a href=\"/ipo/...\"> elements at all "
+            "(response length %d chars) -- page may be JS-rendered client-side "
+            "rather than server-rendered, so a plain requests.get() sees an "
+            "empty shell. First 300 chars of response: %r",
+            len(r.text), r.text[:300],
+        )
+    elif not out:
+        logger.warning(
+            "ipogyani /live-ipo: found %d card(s) but 0 matched the expected "
+            "format -- page structure has likely changed. Sample unmatched "
+            "card text: %r", len(all_cards), sample_unmatched_text,
+        )
+    elif n_unmatched:
+        logger.warning(
+            "ipogyani /live-ipo: matched %d of %d cards -- %d unmatched, "
+            "sample: %r", len(out), len(all_cards), n_unmatched, sample_unmatched_text,
+        )
     return out
 
 

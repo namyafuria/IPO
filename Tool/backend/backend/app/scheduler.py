@@ -48,6 +48,14 @@ def sync_active_ipos():
     except Exception as e:  # noqa: BLE001 -- one bad source call shouldn't stop the batch
         logger.warning("Could not fetch active IPO list from ipogyani: %s", e)
         return
+    if not active:
+        # gmp_sync.py's _ipogyani_fetch_live_status() logs its own detailed
+        # warning distinguishing "0 cards found at all" vs "cards found but
+        # none matched" -- check ipo_tool.gmp_sync log lines for the real
+        # cause. This line just confirms the pass genuinely got nothing,
+        # rather than skipped writes looking identical to "no companies live".
+        logger.warning("ipogyani active-IPO list came back empty -- see ipo_tool.gmp_sync warnings above for why.")
+        return
     for ipo in active:
         name = ipo.get("company_name")
         if not name:
