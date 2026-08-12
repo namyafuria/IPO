@@ -14,29 +14,23 @@ company simply not covered by that source) should not block the other
 source's data from being saved.
 
 --- FIX LOG (2026-08-12) ---
-Swapped the IPO Guru pre-listing fetch for ipogyani.com, reusing
-gmp_sync.py's _ipogyani_fetch_live() / _ipogyani_fetch_history() /
-strict_match() rather than duplicating that scraping logic here.
-
-This is a real coverage trade-off, not a like-for-like swap:
-  - ipogyani.com's live-IPO page only lists issues CURRENTLY open for
-    bidding today. IPO Guru's fetch_active_ipos() (still used by
-    scheduler.py's sync_active_ipos()) also covered upcoming and
-    recently-listed issues. A company that isn't live *today* now gets
-    NOTHING from this path -- existing DB values are preserved either way
-    (see _merge's never-overwrite-with-None rule), but a brand-new company
-    that isn't currently open for bidding won't get any pre-listing data
-    from this call until/unless it's live on a later one.
-  - ipogyani has no open_date/close_date/allotment_date/listing_date and
-    no subscription (QIB/HNI/RII) breakdown, unlike IPO Guru. Only
-    price_band_upper and gmp_percent are populated now. Those other
-    fields stay unfilled for freshly-fetched companies -- tracked as a
-    still-open gap in the project file, same one gmp_sync.py's backfill
-    doesn't cover either.
-  - issue_category is NOT set by this path (ipogyani doesn't expose it) --
-    a brand-new company fetched only through this path will fail
-    /api/predict's "not tagged Mainboard or SME" check until something
-    else sets it.
+1. Swapped the IPO Guru pre-listing fetch for ipogyani.com, reusing
+   gmp_sync.py's _ipogyani_fetch_live() / _ipogyani_fetch_history() /
+   strict_match() rather than duplicating that scraping logic here.
+2. Upgraded again to pull from gmp_sync.py's _ipogyani_fetch_live_status()
+   (scrapes /live-ipo) instead of the GMP-only /ipo-gmp-today table. This
+   closes most of the coverage gap noted in fix #1 below: open_date,
+   close_date, allotment_date, listing_date, subscription_total, and
+   issue_category are now populated from this path too, not just
+   price_band_upper/gmp_percent. The still-open gap:
+     - Coverage is still "currently on ipogyani's live-ipo page today"
+       (open, awaiting allotment/listing, or upcoming) -- a company that's
+       fully listed and dropped off that page gets nothing from this path
+       on a later call. Existing DB values are preserved either way (see
+       _merge's never-overwrite-with-None rule).
+     - issue_category comes from THIS source now (Mainboard/SME), which
+       fixes the /api/predict "not tagged" failure for brand-new companies
+       that were previously only reachable via this path.
 """
 
 import datetime
@@ -44,7 +38,7 @@ import logging
 
 from . import db
 from .fetchers import indianapi
-from .gmp_sync import _ipogyani_fetch_live, _ipogyani_fetch_history, strict_match
+from .gmp_sync import _ipogyani_fetch_live_status
 
 logger = logging.getLogger("ipo_tool.live_fetch")
 
@@ -62,55 +56,40 @@ def _merge(existing: dict, *partials: dict) -> dict:
     return merged
 
 
-def _find_live_ipogyani_entry(company_name: str, live_listings: list[dict]) -> dict | None:
-    """Match a queried company_name against today's ipogyani live-IPO list,
-    using the same strict whole-word-substring matcher gmp_sync.py uses for
-    every other company-identity match in this project (not difflib --
-    see gmp_sync.py's module docstring for the false-positive reasoning)."""
-    names = [e["company_name"] for e in live_listings]
+def _ipogyani_partial(company_name: str) -> dict:
+    """Replaces the old IPO Guru pre-listing fetch. Pulls from ipogyani's
+    /live-ipo page (via gmp_sync._ipogyani_fetch_live_status()), which
+    covers open/awaiting-allotment/upcoming issues with real dates,
+    subscription, and category -- not just GMP. Returns {} for anything
+    not currently on that page, or on any request failure -- callers treat
+    an empty dict the same as a source that simply had nothing to say."""
+    try:
+        live = _ipogyani_fetch_live_status()
+    except Exception as e:
+        logger.warning("ipogyani live-status fetch failed for %r: %s", company_name, e)
+        return {}
+
+    from .gmp_sync import strict_match
+    names = [e["company_name"] for e in live]
     matched_name = strict_match(company_name, names)
     if matched_name is None:
-        return None
-    return next(e for e in live_listings if e["company_name"] == matched_name)
-
-
-def _ipogyani_partial(company_name: str) -> dict:
-    """Replaces the old IPO Guru pre-listing fetch. Returns {} for anything
-    not live today (see module docstring's FIX LOG for the coverage
-    trade-off) or on any request failure -- callers treat an empty dict the
-    same as a source that simply had nothing to say."""
-    try:
-        live = _ipogyani_fetch_live()
-    except Exception as e:
-        logger.warning("ipogyani live-list fetch failed for %r: %s", company_name, e)
         return {}
-
-    entry = _find_live_ipogyani_entry(company_name, live)
-    if entry is None or not entry["slug"]:
-        return {}
+    entry = next(e for e in live if e["company_name"] == matched_name)
 
     partial = {"company_name": entry["company_name"], "data_source": "ipogyani"}
-    if entry.get("price_band_high") is not None:
-        partial["price_band_upper"] = entry["price_band_high"]
-
-    try:
-        history = _ipogyani_fetch_history(entry["slug"], entry.get("price_band_high"))
-    except Exception as e:
-        logger.warning("ipogyani history fetch failed for %r (%s): %s", company_name, entry["slug"], e)
-        history = []
-
-    # history rows: (gmp_date, ipo_price, gmp_value, subscription_at_snapshot,
-    # est_listing_price, est_profit_pct, day_tag, last_updated). Take the
-    # most recent row with a real est_profit_pct -- same "latest row per
-    # company" logic gmp_sync.py's _backfill_master_from_gmp_trend() uses.
-    latest_date, latest_pct = None, None
-    for gmp_date, _price, _gmp, _sub, _listing, est_profit_pct, _tag, _upd in history:
-        if est_profit_pct is None:
-            continue
-        if latest_date is None or gmp_date > latest_date:
-            latest_date, latest_pct = gmp_date, est_profit_pct
-    if latest_pct is not None:
-        partial["gmp_percent"] = latest_pct
+    field_map = {
+        "price_band_high": "price_band_upper",
+        "gmp_percent": "gmp_percent",
+        "open_date": "open_date",
+        "close_date": "close_date",
+        "allotment_date": "allotment_date",
+        "listing_date": "listing_date",
+        "subscription_total": "subscription_total",
+        "category": "issue_category",
+    }
+    for src_key, dest_key in field_map.items():
+        if entry.get(src_key) is not None:
+            partial[dest_key] = entry[src_key]
 
     return partial
 

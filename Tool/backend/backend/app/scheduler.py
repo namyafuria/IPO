@@ -1,7 +1,8 @@
 """
 Background sync -- periodically refreshes:
-  1. Every IPO Guru "active" IPO (open/upcoming/recently listed), so the DB
-     stays current on subscription/GMP without anyone having to search for it.
+  1. Every ipogyani "active" IPO (open/awaiting-allotment/upcoming), so the
+     DB stays current on subscription/GMP/dates without anyone having to
+     search for it. (Was IPO Guru until 2026-08-12 -- see sync_active_ipos().)
   2. Every DB row still within POST_LISTING_TRACK_DAYS of its listing_date,
      so price_day2/3/5/10 and current_price fill in as the days pass.
   3. Live GMP-trend history (ipogyani.com) for every currently-live IPO,
@@ -23,21 +24,32 @@ import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from . import config, db, live_fetch
-from .fetchers import ipoguru
-from .gmp_sync import run_gmp_sync
+from .gmp_sync import run_gmp_sync, _ipogyani_fetch_live_status
 
 logger = logging.getLogger("ipo_tool.scheduler")
 
 
 def sync_active_ipos():
-    """Pass 1: everything IPO Guru currently considers active."""
+    """Pass 1: everything ipogyani's /live-ipo page currently considers
+    active (open, awaiting allotment/listing, or upcoming).
+
+    FIX (2026-08-12): was ipoguru.fetch_active_ipos(), which has been
+    failing silently on every call since IPOGURU_API_KEY was never set on
+    Render -- see gmp_sync.py's _ipogyani_fetch_live_status() docstring.
+    Swapped to that function instead. Each call already goes through
+    live_fetch.fetch_and_upsert(), which merges in price_band/gmp_percent
+    from this same source -- so this pass now also writes real
+    open_date/close_date/allotment_date/listing_date into
+    ipo_master_records, which is what find_live_and_recent_companies()
+    (the "LIVE IPOS" tab) actually reads. issue_category still isn't set
+    by this path directly; see live_fetch.py's own fix-log note on that."""
     try:
-        active = ipoguru.fetch_active_ipos()
-    except ipoguru.IPOGuruError as e:
-        logger.warning("Could not fetch active IPO list: %s", e)
+        active = _ipogyani_fetch_live_status()
+    except Exception as e:  # noqa: BLE001 -- one bad source call shouldn't stop the batch
+        logger.warning("Could not fetch active IPO list from ipogyani: %s", e)
         return
     for ipo in active:
-        name = ipo.get("name")
+        name = ipo.get("company_name")
         if not name:
             continue
         try:

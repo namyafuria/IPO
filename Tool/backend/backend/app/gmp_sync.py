@@ -49,15 +49,26 @@ not difflib -- for the documented false-positive reasons.
    (the field the UI actually reads) stayed NULL even after a successful
    sync. Restored below as _backfill_master_from_gmp_trend(), called at the
    end of run_gmp_sync() after both sources have committed their gmp_trend
-   rows. NOTE: I don't have the original ipogyani_scraper.py's
-   backfill_gmp_percent_strict() source in this session, so this is a
-   reimplementation (same strict-matcher, same "latest row per company"
-   idea) rather than a byte-for-byte restore -- diff it against the real
-   one if you still have it, in case the original also touched
-   price_band_upper/pe_ratio/dates (those come from the investorgain
-   subscription-snapshot CSV via load_subscription_bulk.py, not from
-   gmp_trend, so they're NOT covered by this fix -- that's a separate,
-   still-open backfill gap).
+   rows. Now diffed against the real ipogyani_scraper.py.
+   backfill_gmp_percent_strict() (recovered separately) -- confirms the
+   matcher and "latest row per company" logic are the same, but ONE real
+   behavioral difference: the original only wrote gmp_percent where it was
+   currently NULL (`if cur[0] is None: UPDATE`); _backfill_master_from_
+   gmp_trend() below unconditionally overwrites it every run. Left as
+   overwrite-always here on purpose -- this runs repeatedly as a "live"
+   sync, and NULL-only would freeze gmp_percent at its first-ever value
+   instead of tracking the current GMP. Flag if NULL-only was actually
+   intentional (e.g. because gmp_percent is meant to be authoritatively
+   owned by the investorgain snapshot import and this is only a one-time
+   gap-filler) and this should be reverted.
+   Doesn't touch price_band_upper/pe_ratio/dates (those come from the
+   investorgain subscription-snapshot CSV via load_subscription_bulk.py,
+   not from gmp_trend) -- separate, still-open backfill gap.
+3. Added _ipogyani_fetch_live_status() (scrapes /live-ipo) as the discovery
+   source for scheduler.py's sync_active_ipos(), replacing
+   ipoguru.fetch_active_ipos() -- see that function's own docstring for
+   why (IPOGURU_API_KEY was never set) and for the two parsing bugs fixed
+   while building it.
 """
 import re
 import sqlite3
@@ -74,6 +85,7 @@ HEADERS_IPOWATCH = {"User-Agent": "Mozilla/5.0 (research script)"}
 
 IPOGYANI_BASE = "https://ipogyani.com"
 IPOGYANI_LIVE_URL = f"{IPOGYANI_BASE}/ipo-gmp-today"
+IPOGYANI_LIVE_STATUS_URL = f"{IPOGYANI_BASE}/live-ipo"
 
 IPOWATCH_BASE = "https://ipowatch.in"
 IPOWATCH_SITEMAP_CANDIDATES = ["/sitemap.xml", "/sitemap_index.xml", "/post-sitemap.xml", "/sitemap-1.xml"]
@@ -255,6 +267,120 @@ def _ipogyani_fetch_history(slug, price_band_high):
     return out
 
 
+# ---------------------------------------------------------------------------
+# ipogyani.com/live-ipo -- FIX LOG (2026-08-12), part 2
+#
+# Replaces ipoguru.fetch_active_ipos() as the discovery source for
+# scheduler.py's sync_active_ipos(), since IPOGURU_API_KEY was never set
+# on Render (confirmed from the env var list) and that's been failing
+# silently ever since. /ipo-gmp-today above has no date columns at all --
+# just name/GMP/price band -- so it can't drive the "LIVE IPOS" tab
+# (find_live_and_recent_companies() needs open_date/close_date). This page
+# has those, plus status, subscription, category, and allotment/listing
+# dates once bidding closes.
+#
+# Each IPO is one <a href="/ipo/{slug}"> card. Read with NO separator
+# (a[...].get_text(strip=True), same call the rest of this module makes),
+# every field in the card comes out concatenated with no whitespace
+# between fields that sit in separate child elements, e.g.:
+#   "Dhoot Transmission logoDhoot Transmission10 Aug - 12 Aug, 2026Open
+#    Mainboard Price BandRs 829-871Lot: 17Subscription3.94xDay 2..."
+# Two consequences, both confirmed against the live page:
+#   1. The company name appears twice back-to-back, no separator --
+#      "{name} logo{name}" (once from the logo <img> alt text, once from
+#      the heading). Handled with a regex backreference rather than any
+#      string-splitting/dedup logic.
+#   2. Status/category/day-tag words butt directly against digits or each
+#      other ("2026Open", "OpenMainboard", "3.94xDay 2", "-Not open") with
+#      no space, so a \b-anchored regex hunting for these as standalone
+#      words silently never matches -- \b only fires at a letter/non-letter
+#      transition, and digit->letter or letter->letter transitions don't
+#      qualify. Fixed by matching the whole card as one ordered sequence of
+#      anchored substrings (one regex, DOTALL) instead of independent
+#      \b-bounded lookups.
+# ---------------------------------------------------------------------------
+_LIVE_CARD_RE = re.compile(
+    r"^(?P<name>.+?) logo(?P=name)"
+    r"(?P<open_day>\d{1,2}) (?P<open_mon>[A-Za-z]{3}) - (?P<close_day>\d{1,2}) (?P<close_mon>[A-Za-z]{3}), (?P<year>\d{4})"
+    r"(?P<status>Open|Last Day|Closed|Listing on \d{1,2} [A-Za-z]{3}|Allotment on \d{1,2} [A-Za-z]{3}|Upcoming)"
+    r"(?P<category>Mainboard|SME)"
+    r" Price BandRs (?P<band_low>[\d,]+)-(?P<band_high>[\d,]+)"
+    r"Lot: (?P<lot>\d+)"
+    r"Subscription(?P<sub>[\d.]+x|-)"
+    r"(?P<day_tag>Day \d+|Final|Not open)"
+    r"Issue SizeRs (?P<issue_size>[\d,.]+) Cr"
+    r".*?GMP:(?P<gmp_pct>[+-]?[\d.]+)%"
+    r".*?AI Gain(?P<ai_pct>[+-]?[\d.]+)%",
+    re.DOTALL,
+)
+
+
+def _card_date(day, mon, year):
+    month = _IPOGYANI_MONTHS[mon.lower()]
+    return f"{int(year):04d}-{month:02d}-{int(day):02d}"
+
+
+def _ipogyani_fetch_live_status():
+    """One dict per card on /live-ipo: company_name, slug, category,
+    status (Open/Last Day/Closed/Upcoming), open_date, close_date,
+    allotment_date, listing_date, subscription_total, price_band_low/high,
+    lot_size, issue_size_cr, gmp_percent, ai_pred_pct.
+
+    "Listing on <date>" and "Allotment on <date>" cards are past their
+    close_date (bidding is over), so status is normalized to "Closed" for
+    those with the extra date captured separately -- callers that just
+    want "still open for bidding" can check status == "Open"/"Last Day"
+    without also special-casing the on-<date> phrasing.
+    """
+    r = requests.get(IPOGYANI_LIVE_STATUS_URL, headers=HEADERS_IPOGYANI, timeout=15)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    out = []
+    for a in soup.find_all("a", href=re.compile(r"^/ipo/[a-z0-9-]+$")):
+        slug_m = re.search(r"^/ipo/([a-z0-9-]+)$", a["href"])
+        if slug_m is None:
+            continue
+        text = a.get_text(strip=True)
+        m = _LIVE_CARD_RE.search(text)
+        if m is None:
+            continue
+
+        year = m.group("year")
+        status_raw = m.group("status")
+        allotment_date = listing_date = None
+        am = re.match(r"Allotment on (\d{1,2}) ([A-Za-z]{3})", status_raw)
+        lm = re.match(r"Listing on (\d{1,2}) ([A-Za-z]{3})", status_raw)
+        if am:
+            allotment_date = _card_date(am.group(1), am.group(2), year)
+            status = "Closed"
+        elif lm:
+            listing_date = _card_date(lm.group(1), lm.group(2), year)
+            status = "Closed"
+        else:
+            status = status_raw
+
+        sub_raw = m.group("sub")
+        out.append({
+            "company_name": m.group("name"),
+            "slug": slug_m.group(1),
+            "category": m.group("category"),
+            "status": status,
+            "open_date": _card_date(m.group("open_day"), m.group("open_mon"), year),
+            "close_date": _card_date(m.group("close_day"), m.group("close_mon"), year),
+            "allotment_date": allotment_date,
+            "listing_date": listing_date,
+            "subscription_total": float(sub_raw.rstrip("x")) if sub_raw != "-" else None,
+            "price_band_low": float(m.group("band_low").replace(",", "")),
+            "price_band_high": float(m.group("band_high").replace(",", "")),
+            "lot_size": int(m.group("lot")),
+            "issue_size_cr": float(m.group("issue_size").replace(",", "")),
+            "gmp_percent": float(m.group("gmp_pct")),
+            "ai_pred_pct": float(m.group("ai_pct")),
+        })
+    return out
+
+
 def sync_ipogyani(conn):
     c = conn.cursor()
     live = _ipogyani_fetch_live()
@@ -431,14 +557,4 @@ def run_gmp_sync(sources=("ipogyani", "ipowatch"), ipowatch_limit=None):
     return {"results": results, "errors": errors}
 
 
-# ---------------------------------------------------------------------------
-# scheduler.py integration -- add these two lines inside run_sync_once()
-# (file not available this session, so not edited directly; paste in by hand):
-#
-#   from .gmp_sync import run_gmp_sync
-#   run_gmp_sync(sources=("ipogyani",))   # keep ipowatch out of the automatic
-#                                          # cron path until its first real
-#                                          # run is confirmed -- trigger it
-#                                          # manually via the endpoint below
-#                                          # with a small `limit` first.
-# ---------------------------------------------------------------------------
+
