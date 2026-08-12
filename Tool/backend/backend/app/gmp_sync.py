@@ -41,6 +41,23 @@ ways to handle that, pick based on your host:
 Uses the same strict whole-word-substring company-name matcher as
 load_subscription_bulk.py / load_investorgain_batch.py throughout --
 not difflib -- for the documented false-positive reasons.
+
+--- FIX LOG (2026-08-12) ---
+1. config.DB_PATH didn't exist -- added to config.py separately.
+2. This file inlined ipogyani_scraper.py's fetch/parse logic but dropped
+   its backfill_gmp_percent_strict() step, so ipo_master_records.gmp_percent
+   (the field the UI actually reads) stayed NULL even after a successful
+   sync. Restored below as _backfill_master_from_gmp_trend(), called at the
+   end of run_gmp_sync() after both sources have committed their gmp_trend
+   rows. NOTE: I don't have the original ipogyani_scraper.py's
+   backfill_gmp_percent_strict() source in this session, so this is a
+   reimplementation (same strict-matcher, same "latest row per company"
+   idea) rather than a byte-for-byte restore -- diff it against the real
+   one if you still have it, in case the original also touched
+   price_band_upper/pe_ratio/dates (those come from the investorgain
+   subscription-snapshot CSV via load_subscription_bulk.py, not from
+   gmp_trend, so they're NOT covered by this fix -- that's a separate,
+   still-open backfill gap).
 """
 import re
 import sqlite3
@@ -116,6 +133,47 @@ def _upsert_gmp_trend(c, rows):
         """,
         rows,
     )
+
+
+def _backfill_master_from_gmp_trend(c):
+    """Restores the gmp_percent push that ipogyani_scraper.py's
+    backfill_gmp_percent_strict() used to do, which got dropped when its
+    logic was inlined into sync_ipogyani()/sync_ipowatch() below.
+
+    For every company in gmp_trend, take its most recent row (by gmp_date)
+    and push est_profit_pct into ipo_master_records.gmp_percent for the
+    strict-matched company. Only ever overwrites gmp_percent -- does not
+    touch price_band_upper/pe_ratio/close_date/allotment_date/listing_date,
+    since those come from a different source (investorgain snapshot CSV,
+    see load_subscription_bulk.py) that this sync path never had.
+
+    Returns the number of ipo_master_records rows updated.
+    """
+    db_names = [r[0] for r in c.execute("SELECT company_name FROM ipo_master_records").fetchall()]
+
+    latest_per_company = {}
+    for company_name, gmp_date, est_profit_pct in c.execute(
+        """
+        SELECT company_name, gmp_date, est_profit_pct
+        FROM gmp_trend
+        WHERE est_profit_pct IS NOT NULL
+        """
+    ).fetchall():
+        prev = latest_per_company.get(company_name)
+        if prev is None or gmp_date > prev[0]:
+            latest_per_company[company_name] = (gmp_date, est_profit_pct)
+
+    updated = 0
+    for company_name, (gmp_date, est_profit_pct) in latest_per_company.items():
+        db_name = strict_match(company_name, db_names)
+        if db_name is None:
+            continue
+        c.execute(
+            "UPDATE ipo_master_records SET gmp_percent = ? WHERE company_name = ?",
+            (est_profit_pct, db_name),
+        )
+        updated += c.rowcount if c.rowcount and c.rowcount > 0 else 0
+    return updated
 
 
 # ---------------------------------------------------------------------------
@@ -357,6 +415,18 @@ def run_gmp_sync(sources=("ipogyani", "ipowatch"), ipowatch_limit=None):
             results.append(sync_ipowatch(conn, limit=ipowatch_limit))
         except Exception as e:
             errors.append({"source": "ipowatch", "error": str(e)})
+
+    # FIX: restore the gmp_percent push into ipo_master_records that
+    # ipogyani_scraper.py used to do via backfill_gmp_percent_strict() --
+    # run once at the end so it picks up rows from whichever source(s) ran.
+    try:
+        c = conn.cursor()
+        n_updated = _backfill_master_from_gmp_trend(c)
+        conn.commit()
+        results.append({"source": "backfill_gmp_percent", "rows_updated": n_updated})
+    except Exception as e:
+        errors.append({"source": "backfill_gmp_percent", "error": str(e)})
+
     conn.close()
     return {"results": results, "errors": errors}
 

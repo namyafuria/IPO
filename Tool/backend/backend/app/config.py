@@ -13,6 +13,13 @@ try:
 except ImportError:
     pass
 
+# --- Database ---
+# Path to the SQLite DB file, resolved relative to the backend root unless
+# an absolute path is given. gmp_sync.py, main.py, and the model-serving
+# code all read this rather than hardcoding a filename, so renaming/moving
+# the DB only ever requires changing this one value (or the env var).
+DB_PATH = os.environ.get("DB_PATH", "ipo_database.db")
+
 # --- IPO Guru (pre-listing: dates, price band, subscription, GMP) ---
 # Get a free key by emailing ipoguru.in@gmail.com with your name, app/company,
 # and intended use. 15 req/min, 300 req/day.
