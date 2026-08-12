@@ -8,6 +8,8 @@ from . import config, live_fetch
 from .db import find_company
 from .predict import predict_for_company, PredictionError
 from .predict_trajectory import predict_trajectory_for_company, TrajectoryPredictionError
+from .predict_trajectory_rolling import predict_trajectory_rolling
+from .gmp_sync import run_gmp_sync
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ipo_tool.main")
@@ -122,6 +124,80 @@ def predict_trajectory(
         return predict_trajectory_for_company(name, subscription_override=subscription, gmp_override=gmp)
     except TrajectoryPredictionError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/api/predict_trajectory_rolling/{name}")
+def predict_trajectory_rolling_route(name: str, horizon: str):
+    """Problem B rolling/updating mode: predicts day5 or day10 using the
+    ACTUAL observed early-day price move (day1->day2 for the day5 model,
+    day1->day5 for the day10 model), instead of pre-listing features alone.
+    Substantially more accurate than /api/predict_trajectory once that
+    earlier day's price is known (see predict_trajectory_rolling.py's
+    holdout numbers) -- but by definition only usable post-listing, once
+    the relevant earlier day has actually elapsed.
+
+    `horizon` is required and must be 'day5' or 'day10' (day2/day3 have no
+    rolling variant; day1 has nothing to roll from).
+
+    Returns 409 if the earlier day's actual price isn't in the DB yet for
+    this company -- the frontend should only surface this as an "update
+    with actual data" action once that's available, not show it always.
+    Returns 404 if there's no rolling model for the company's category, or
+    if the company itself isn't found.
+    """
+    if horizon not in ("day5", "day10"):
+        raise HTTPException(status_code=400, detail="horizon must be 'day5' or 'day10'")
+
+    record, exact = find_company(name)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"No match found for '{name}' in the database.")
+
+    known_col = "price_day2" if horizon == "day5" else "price_day5"
+    known_price = getattr(record, known_col, None)
+    if known_price is None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"{known_col} not yet available for '{record.company_name}' -- this endpoint "
+                   "only works once that trading day has actually elapsed post-listing.",
+        )
+
+    result = predict_trajectory_rolling(
+        category=record.issue_category,
+        horizon=horizon,
+        subscription_total=record.subscription_total,
+        sector=record.sector,
+        price_day1=record.price_day1,
+        known_price=known_price,
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No rolling model available for category '{record.issue_category}'.",
+        )
+    result["company_name"] = record.company_name
+    result["exact_match"] = exact
+    return result
+
+
+@app.post("/api/sync/gmp")
+def trigger_gmp_sync(sources: Optional[str] = "ipogyani,ipowatch", ipowatch_limit: Optional[int] = None):
+    """Runs the GMP scrapers directly and upserts into gmp_trend.
+
+    `sources`: comma-separated, any of "ipogyani","ipowatch" (default both).
+    `ipowatch_limit`: caps how many ipowatch pages get scraped this call --
+    IMPORTANT on a serverless host: ipowatch's discovery step crawls the
+    site's sitemap and can turn up hundreds of pages, which will likely
+    exceed a serverless function's execution time limit if run uncapped in
+    one request. Pass a small limit (e.g. 15) and call this repeatedly
+    (e.g. via Vercel Cron every 10 minutes) rather than expecting one call
+    to finish the whole site. On a long-running host (Render/VM with
+    RUN_SCHEDULER=1) it's fine to leave ipowatch_limit unset.
+
+    ipogyani has no such concern -- it only covers currently-live IPOs, a
+    small, bounded set, so it's safe to run uncapped on any host.
+    """
+    src_tuple = tuple(s.strip() for s in sources.split(",") if s.strip())
+    return run_gmp_sync(sources=src_tuple, ipowatch_limit=ipowatch_limit)
 
 
 @app.post("/api/sync")

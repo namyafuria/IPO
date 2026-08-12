@@ -4,6 +4,14 @@ Background sync -- periodically refreshes:
      stays current on subscription/GMP without anyone having to search for it.
   2. Every DB row still within POST_LISTING_TRACK_DAYS of its listing_date,
      so price_day2/3/5/10 and current_price fill in as the days pass.
+  3. Live GMP-trend history (ipogyani.com) for every currently-live IPO,
+     into gmp_trend -- see gmp_sync.py. Only ipogyani runs automatically
+     here; ipowatch.in is a second GMP source that's never been run
+     end-to-end against the live site, so it's deliberately left out of
+     this automatic path. Trigger it manually first via
+     POST /api/sync/gmp?sources=ipowatch&ipowatch_limit=15 (small limit --
+     see that endpoint's docstring for why) and confirm it behaves before
+     ever adding it here.
 
 Runs in-process via APScheduler. On a serverless host (Vercel functions),
 in-process background loops don't persist between invocations -- see the
@@ -16,6 +24,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from . import config, db, live_fetch
 from .fetchers import ipoguru
+from .gmp_sync import run_gmp_sync
 
 logger = logging.getLogger("ipo_tool.scheduler")
 
@@ -61,9 +70,22 @@ def sync_recent_listings():
             logger.warning("Recent-listing sync failed for %r: %s", row["company_name"], e)
 
 
+def sync_gmp_trend():
+    """Pass 3: live day-wise GMP history for currently-live IPOs, into
+    gmp_trend. ipogyani only -- see module docstring for why ipowatch is
+    excluded from this automatic path. Bounded/small (only currently-live
+    IPOs), so safe to run every cycle on any host."""
+    try:
+        result = run_gmp_sync(sources=("ipogyani",))
+        logger.info("GMP trend sync: %s", result)
+    except Exception as e:  # noqa: BLE001 -- same "don't take down the batch" pattern as passes 1/2
+        logger.warning("GMP trend sync failed: %s", e)
+
+
 def run_sync_once():
     sync_active_ipos()
     sync_recent_listings()
+    sync_gmp_trend()
 
 
 def start_scheduler() -> BackgroundScheduler:
@@ -83,3 +105,8 @@ def start_scheduler() -> BackgroundScheduler:
 # GitHub Actions on a schedule, or cron-job.org -- on the same
 # SYNC_INTERVAL_MINUTES cadence. On a normal long-running host (Render web
 # service, a VM, Railway, etc.) start_scheduler() at app startup works fine.
+#
+# gmp_sync's ipowatch source is intentionally NOT part of this cadence (see
+# sync_gmp_trend() above) -- call POST /api/sync/gmp directly for that,
+# with a small ipowatch_limit, from its own separate cron entry once you've
+# confirmed it works, rather than folding it into SYNC_INTERVAL_MINUTES.
