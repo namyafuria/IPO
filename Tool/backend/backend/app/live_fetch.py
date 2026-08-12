@@ -31,6 +31,20 @@ source's data from being saved.
      - issue_category comes from THIS source now (Mainboard/SME), which
        fixes the /api/predict "not tagged" failure for brand-new companies
        that were previously only reachable via this path.
+3. Added subscription_qib/subscription_hni/subscription_rii, via
+   gmp_sync._ipogyani_fetch_subscription_categories() (a separate
+   per-company page -- see that function's docstring for the confirmed
+   caveat that its category breakdown can lag subscription_total, which
+   still comes from _ipogyani_fetch_live_status() above, by some hours).
+   These fields existed in schemas.py but were never populated by any
+   fetch path before this.
+4. fetch_and_upsert() now skips the ipogyani partial entirely once a
+   company's listing_date has passed (see _already_listed()) -- all of
+   ipogyani's data (price band, GMP, subscription total, subscription
+   category breakdown, issue_category) is pre-listing by design (see
+   module docstring above), so it should freeze at whatever it was when
+   the company listed rather than keep getting re-fetched by
+   sync_recent_listings()'s daily post-listing price_dayN passes.
 """
 
 import datetime
@@ -91,7 +105,34 @@ def _ipogyani_partial(company_name: str) -> dict:
         if entry.get(src_key) is not None:
             partial[dest_key] = entry[src_key]
 
+    # FIX (2026-08-12): subscription_qib/subscription_hni/subscription_rii
+    # were declared in schemas.py but never actually fetched by anything --
+    # see gmp_sync._ipogyani_fetch_subscription_categories()'s docstring
+    # for the confirmed caveat that this source's category breakdown can
+    # lag subscription_total (set above, from a different ipogyani page)
+    # by some hours. Self-contained/catches its own request errors, so a
+    # failure here never blocks the rest of this partial.
+    from .gmp_sync import _ipogyani_fetch_subscription_categories
+    partial.update(_ipogyani_fetch_subscription_categories(entry["slug"]))
+
     return partial
+
+
+def _already_listed(listing_date: str | None) -> bool:
+    """True if `listing_date` is set and is today or earlier -- i.e. the
+    IPO has actually listed, bidding is long closed, and ipogyani's
+    pre-listing data (price band, GMP, subscription -- see module
+    docstring's source split) is no longer meaningful to keep refreshing.
+    A future listing_date (still upcoming) or no listing_date at all
+    (still open/awaiting allotment) both return False -- same date-parsing
+    pattern as is_still_trackable() below."""
+    if not listing_date:
+        return False
+    try:
+        d = datetime.date.fromisoformat(listing_date[:10])
+    except ValueError:
+        return False
+    return d <= datetime.date.today()
 
 
 def fetch_and_upsert(company_name: str) -> dict:
@@ -106,10 +147,31 @@ def fetch_and_upsert(company_name: str) -> dict:
     existing = existing_record.model_dump() if existing_record else {"company_name": company_name}
 
     ipogyani_partial = {}
-    try:
-        ipogyani_partial = _ipogyani_partial(company_name)
-    except Exception as e:  # noqa: BLE001 -- same "don't take down the rest" pattern as before
-        logger.warning("ipogyani fetch failed for %r: %s", company_name, e)
+    if _already_listed(existing.get("listing_date")):
+        # FIX (2026-08-12): once an IPO has actually listed, ipogyani's
+        # price-band/GMP/subscription data (price_band_upper, gmp_percent,
+        # subscription_total, subscription_qib/hni/rii, issue_category) is
+        # frozen -- don't keep re-fetching it. Before this, sync_recent_
+        # listings()'s daily post-listing passes (run purely to fill
+        # price_dayN) also re-ran the full ipogyani partial every time,
+        # which could silently drift subscription_qib/hni/rii away from
+        # their real final values if ipogyani's per-company page ever
+        # recomputes/changes after close (see _ipogyani_fetch_
+        # subscription_categories()'s cadence-lag caveat) -- there's no
+        # reason to re-poll a pre-listing-only source once listing has
+        # already happened. This does NOT affect gmp_trend/gmp_percent's
+        # separate live-tracking path (run_gmp_sync(), scheduler.py's
+        # sync_gmp_trend() pass) -- that's a different, intentionally
+        # ongoing mechanism, untouched by this.
+        logger.info(
+            "Skipping ipogyani fetch for %r -- already listed on %s, "
+            "pre-listing data is frozen.", company_name, existing["listing_date"],
+        )
+    else:
+        try:
+            ipogyani_partial = _ipogyani_partial(company_name)
+        except Exception as e:  # noqa: BLE001 -- same "don't take down the rest" pattern as before
+            logger.warning("ipogyani fetch failed for %r: %s", company_name, e)
 
     indianapi_partial = {}
     price_partial = {}

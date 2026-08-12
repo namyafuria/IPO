@@ -78,6 +78,14 @@ not difflib -- for the documented false-positive reasons.
    pattern, since it's the natural counterpart -- NOT yet confirmed against
    a real card. If the unmatched-card diagnostic log still shows cards
    failing on an allotment-day card, that's the first thing to check.
+5. Added _ipogyani_fetch_subscription_categories() -- subscription_qib/
+   subscription_hni/subscription_rii were declared in schemas.py but never
+   actually populated by any fetch path, which is why they held stale/
+   arithmetically-inconsistent values next to a live subscription_total.
+   Source is ipogyani's per-company /ipo/{slug}/subscription page -- see
+   that function's own docstring for the confirmed caveat that this page's
+   own total doesn't agree with /live-ipo's, so only the category
+   multiples are used, never a total.
 """
 import logging
 import re
@@ -433,6 +441,83 @@ def _ipogyani_fetch_live_status():
             "sample: %r", len(out), len(all_cards), n_unmatched, sample_unmatched_text,
         )
     return out
+
+
+# ---------------------------------------------------------------------------
+# ipogyani.com/ipo/{slug}/subscription -- retail/NII/QIB category breakdown
+#
+# FIX (2026-08-12): schemas.py has always declared subscription_qib/
+# subscription_hni/subscription_rii, but no fetch path in this project ever
+# populated them -- they were left holding whatever an old one-time import
+# put there, which visibly stopped matching subscription_total once that
+# field started getting refreshed live via _ipogyani_fetch_live_status()
+# (e.g. Dhoot Transmission showing HNI 2.47x/RII 0.76x next to a live
+# total of 74.2x -- arithmetically impossible together).
+#
+# CONFIRMED (2026-08-12) via direct fetch of both a mid-bidding company
+# (Dhoot Transmission) and a closed one (Ardee Industries): ipogyani has
+# THREE pages that each report a "live" total for the same company, and
+# they do not agree -- Dhoot showed 74.21x on /ipo-subscription's inline
+# breakdown vs 15.96x on its own /ipo/{slug}/subscription page, fetched
+# within minutes of each other. The per-company page below is simply on a
+# slower/different refresh cadence than /live-ipo (the source
+# subscription_total already comes from). There is no way to make the
+# category breakdown agree with subscription_total using this source --
+# only /ipo-subscription's own per-card expand-on-click has the freshest
+# numbers, and that's client-rendered, invisible to a plain GET.
+#
+# So: this function returns ONLY the three category multiples, never a
+# total -- callers must not use it to overwrite subscription_total, and
+# should expect the category figures to occasionally lag the total shown
+# elsewhere. That's a real limitation of the source, not a bug here.
+#
+# Extracted from the page's "Quick Answer" summary sentence (a fixed SEO
+# template -- "...subscribed X.XXx overall, with the retail category at
+# X.XXx, NII at X.XXx and QIB at X.XXx.") rather than any guessed CSS
+# class/div structure, since this project already got burned once this
+# session assuming a fetch tool's rendering matches raw requests.get()
+# structural markup -- a stable prose sentence is far more robust to that
+# gap than a speculative selector would be.
+# ---------------------------------------------------------------------------
+_SUB_CATEGORY_RE = re.compile(
+    r"subscribed\s+([\d,.]+)x\s+overall,?\s*with\s+the\s+retail\s+category\s+at\s+([\d,.]+)x,?\s*"
+    r"NII\s+at\s+([\d,.]+)x\s+and\s+QIB\s+at\s+([\d,.]+)x",
+    re.IGNORECASE,
+)
+
+
+def _ipogyani_fetch_subscription_categories(slug):
+    """Retail/NII/QIB subscription multiples for one company, from
+    ipogyani.com/ipo/{slug}/subscription. Returns
+    {"subscription_rii": float, "subscription_hni": float,
+    "subscription_qib": float}, or {} if the page has no bids yet, the
+    summary sentence isn't found (format change), or the request fails --
+    treated the same as any other source with nothing to say.
+    """
+    url = f"{IPOGYANI_BASE}/ipo/{slug}/subscription"
+    try:
+        r = requests.get(url, headers=HEADERS_IPOGYANI, timeout=15)
+        r.raise_for_status()
+    except Exception as e:
+        logger.warning("ipogyani subscription-category fetch failed for slug %r: %s", slug, e)
+        return {}
+
+    soup = BeautifulSoup(r.text, "html.parser")
+    text = soup.get_text(" ", strip=True)
+    m = _SUB_CATEGORY_RE.search(text)
+    if m is None:
+        logger.warning(
+            "ipogyani /ipo/%s/subscription: category summary sentence not found -- "
+            "sample text: %r", slug, text[:300],
+        )
+        return {}
+
+    _total_str, retail_str, nii_str, qib_str = m.groups()
+    return {
+        "subscription_rii": float(retail_str.replace(",", "")),
+        "subscription_hni": float(nii_str.replace(",", "")),
+        "subscription_qib": float(qib_str.replace(",", "")),
+    }
 
 
 def sync_ipogyani(conn):
