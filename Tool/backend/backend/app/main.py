@@ -1,11 +1,12 @@
 import logging
+import sqlite3
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import config, live_fetch
-from .db import find_company
+from .db import find_company, find_live_and_recent_companies
 from .predict import predict_for_company, PredictionError
 from .predict_trajectory import predict_trajectory_for_company, TrajectoryPredictionError
 from .predict_trajectory_rolling import predict_trajectory_rolling
@@ -209,3 +210,79 @@ def trigger_sync():
     from .scheduler import run_sync_once
     run_sync_once()
     return {"status": "sync complete"}
+
+
+# ---------------------------------------------------------------------------
+# NEW: sync + predict, in one server-side call.
+#
+# This is the piece that was previously a local-only script
+# (fetch_live_and_predict.py) that never touched the deployed DB or API.
+# Moved here so it runs ON the server against the live DB, using the real
+# predict_for_company / predict_trajectory_for_company functions directly.
+#
+# The "which companies are currently live" lookup goes through
+# db.find_live_and_recent_companies() (schema confirmed against schemas.py:
+# open_date/close_date/listing_date/issue_category all real columns) so it
+# shares the exact same DB_PATH/connection logic as find_company() and
+# every other DB access in this project -- no separate raw sqlite3.connect()
+# here that could silently point at a different file.
+# ---------------------------------------------------------------------------
+@app.post("/api/sync_and_predict")
+def sync_and_predict(
+    sources: Optional[str] = "ipogyani",
+    track_days: Optional[int] = None,
+    include_trajectory: bool = True,
+):
+    """One-shot 'refresh live data, then predict everything currently
+    relevant' -- runs server-side against the live deployment's DB, not a
+    local copy. This is what the frontend's global refresh action (or a
+    cron job) should call, rather than /api/sync/gmp alone.
+
+    Steps, in order:
+      1. run_gmp_sync(sources) -- refreshes gmp_trend and, via the fixed
+         backfill step, ipo_master_records.gmp_percent (see gmp_sync.py).
+      2. Finds every company currently open for bidding, or listed within
+         the last `track_days` days (defaults to config.POST_LISTING_TRACK_DAYS).
+      3. Calls predict_for_company() and, if include_trajectory, also
+         predict_trajectory_for_company() for each -- with NO
+         subscription/gmp override, so both read whatever the sync step
+         just wrote into the DB.
+
+    `sources`: same comma-separated ipogyani/ipowatch list as /api/sync/gmp.
+    Defaults to ipogyani only here (ipowatch is slow -- see that route's
+    docstring -- so it's opt-in for this combined call rather than default).
+
+    Returns: {"sync": <run_gmp_sync result>, "predictions": [ {company_name,
+    gain, trajectory, error}, ... ]}. A per-company `error` field (instead
+    of raising) means that one company's prediction failed -- the rest of
+    the batch still returns.
+    """
+    src_tuple = tuple(s.strip() for s in sources.split(",") if s.strip())
+    sync_result = run_gmp_sync(sources=src_tuple)
+
+    days = track_days if track_days is not None else config.POST_LISTING_TRACK_DAYS
+    try:
+        company_names = find_live_and_recent_companies(days)
+    except sqlite3.OperationalError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not query live/recent companies: {e}",
+        )
+
+    predictions = []
+    for name in company_names:
+        entry = {"company_name": name}
+        try:
+            entry["gain"] = predict_for_company(name)
+        except PredictionError as e:
+            entry["gain_error"] = str(e)
+
+        if include_trajectory:
+            try:
+                entry["trajectory"] = predict_trajectory_for_company(name)
+            except TrajectoryPredictionError as e:
+                entry["trajectory_error"] = str(e)
+
+        predictions.append(entry)
+
+    return {"sync": sync_result, "predictions": predictions}
