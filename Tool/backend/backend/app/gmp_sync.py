@@ -69,6 +69,15 @@ not difflib -- for the documented false-positive reasons.
    ipoguru.fetch_active_ipos() -- see that function's own docstring for
    why (IPOGURU_API_KEY was never set) and for the two parsing bugs fixed
    while building it.
+4. _LIVE_CARD_RE's status group didn't recognize the bare "Listing Day"
+   variant (confirmed via Ardee Industries production text: "...2026Listing
+   DayMainboardPrice Band..."), so that card (and any other on its listing
+   day) silently failed to match at all. Added "Listing Day" to the status
+   alternation and normalize it to "Closed" (same as the dated "Listing on
+   <date>" form). Also speculatively added "Allotment Day" by the same
+   pattern, since it's the natural counterpart -- NOT yet confirmed against
+   a real card. If the unmatched-card diagnostic log still shows cards
+   failing on an allotment-day card, that's the first thing to check.
 """
 import logging
 import re
@@ -305,7 +314,7 @@ def _ipogyani_fetch_history(slug, price_band_high):
 _LIVE_CARD_RE = re.compile(
     r"^(?P<name>.+?)"
     r"(?P<open_day>\d{1,2})\s+(?P<open_mon>[A-Za-z]{3})\s*-\s*(?P<close_day>\d{1,2})\s+(?P<close_mon>[A-Za-z]{3}),\s*(?P<year>\d{4})"
-    r"(?P<status>Open|Last Day|Closed|Listing on \d{1,2} [A-Za-z]{3}|Allotment on \d{1,2} [A-Za-z]{3}|Upcoming)"
+    r"(?P<status>Open|Last Day|Closed|Listing Day|Listing on \d{1,2} [A-Za-z]{3}|Allotment Day|Allotment on \d{1,2} [A-Za-z]{3}|Upcoming)"
     r"(?P<category>Mainboard|SME)"
     r"\s*Price\s*Band\s*Rs\s*(?P<band_low>[\d,]+)\s*-\s*(?P<band_high>[\d,]+)"
     r"Lot:\s*(?P<lot>\d+)"
@@ -365,6 +374,15 @@ def _ipogyani_fetch_live_status():
             status = "Closed"
         elif lm:
             listing_date = _card_date(lm.group(1), lm.group(2), year)
+            status = "Closed"
+        elif status_raw in ("Listing Day", "Allotment Day"):
+            # Bare variant with no date attached (confirmed in production for
+            # "Listing Day" -- Ardee Industries, 2026-08-12; "Allotment Day"
+            # is the same pattern by inference, NOT yet confirmed against a
+            # real card -- watch the unmatched-card diagnostic log for it).
+            # Same meaning as the dated "X on <date>" forms -- bidding is
+            # closed -- but no date digits are present to parse, so
+            # allotment_date/listing_date stay None here.
             status = "Closed"
         else:
             status = status_raw
