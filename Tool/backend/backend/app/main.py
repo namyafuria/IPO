@@ -272,6 +272,13 @@ def sync_and_predict(
     predictions = []
     for name in company_names:
         entry = {"company_name": name}
+
+        # Full live record (subscription, GMP, dates, etc.) so the frontend
+        # can render everything in one response, same shape /api/company
+        # already returns -- no extra per-company request needed.
+        record, _ = find_company(name)
+        entry["record"] = record.model_dump() if record is not None else None
+
         try:
             entry["gain"] = predict_for_company(name)
         except PredictionError as e:

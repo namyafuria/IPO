@@ -51,4 +51,12 @@ export function getTrajectory(name, { subscription, gmp } = {}) {
   return request(`/api/predict_trajectory/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`)
 }
 
+// One-shot: refreshes live GMP data server-side, then returns every
+// currently-open or recently-listed company with its full live record AND
+// its gain/trajectory predictions already computed -- powers the "Live
+// IPOs" tab (no per-company follow-up requests needed).
+export function syncAndPredictAll() {
+  return request('/api/sync_and_predict', { method: 'POST' })
+}
+
 export { ApiError }

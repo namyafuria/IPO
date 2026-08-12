@@ -4,9 +4,11 @@ import CompanyPanel from './components/CompanyPanel'
 import PredictionPanel from './components/PredictionPanel'
 import TrajectoryPanel from './components/TrajectoryPanel'
 import ErrorPanel from './components/ErrorPanel'
+import LiveIposPanel from './components/LiveIposPanel'
 import { getCompany, refreshCompany, ApiError } from './api'
 
 export default function App() {
+  const [view, setView] = useState('search') // 'search' | 'live'
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [result, setResult] = useState(null)
@@ -66,53 +68,89 @@ export default function App() {
           its actual listing-day performance.
         </p>
 
-        <div className="mt-8">
-          <SearchBar onSearch={handleSearch} loading={loading} />
+        {/* Tabs */}
+        <div className="mt-8 flex items-center gap-1 border-b border-border">
+          <button
+            type="button"
+            onClick={() => setView('search')}
+            className={`px-3 py-2 font-mono text-xs uppercase tracking-wider transition-colors ${
+              view === 'search'
+                ? 'border-b-2 border-amber text-amber'
+                : 'border-b-2 border-transparent text-muted hover:text-ink'
+            }`}
+          >
+            Search
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('live')}
+            className={`px-3 py-2 font-mono text-xs uppercase tracking-wider transition-colors ${
+              view === 'live'
+                ? 'border-b-2 border-amber text-amber'
+                : 'border-b-2 border-transparent text-muted hover:text-ink'
+            }`}
+          >
+            Live IPOs
+          </button>
         </div>
 
-        {/* Results */}
-        <div className="mt-8">
-          {loading && (
-            <div className="rounded-lg border border-border bg-panel p-5 sm:p-6">
-              <div className="h-4 w-1/3 animate-pulse rounded bg-panel-raised" />
-              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-8 animate-pulse rounded bg-panel-raised" />
-                ))}
-              </div>
+        {view === 'search' && (
+          <>
+            <div className="mt-6">
+              <SearchBar onSearch={handleSearch} loading={loading} />
             </div>
-          )}
-          {!loading && error && <ErrorPanel message={error} />}
-          {!loading && !error && result && (
-            <div className="flex flex-col gap-5 sm:gap-6">
-              <CompanyPanel data={result} onRefresh={handleRefresh} refreshing={refreshing} />
-              <PredictionPanel
-                companyName={result.record.company_name}
-                defaultSubscription={result.record.subscription_total}
-                defaultGmp={result.record.gmp_percent}
-                actualGainPct={result.record.listing_day_gain_pct}
-                subscriptionOverride={subscriptionOverride}
-                gmpOverride={gmpOverride}
-                onOverrideChange={(sub, gmp) => {
-                  setSubscriptionOverride(sub)
-                  setGmpOverride(gmp)
-                }}
-              />
-              <TrajectoryPanel
-                companyName={result.record.company_name}
-                defaultSubscription={result.record.subscription_total}
-                subscriptionOverride={subscriptionOverride}
-                gmpOverride={gmpOverride}
-                record={result.record}
-              />
+
+            {/* Results */}
+            <div className="mt-8">
+              {loading && (
+                <div className="rounded-lg border border-border bg-panel p-5 sm:p-6">
+                  <div className="h-4 w-1/3 animate-pulse rounded bg-panel-raised" />
+                  <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="h-8 animate-pulse rounded bg-panel-raised" />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {!loading && error && <ErrorPanel message={error} />}
+              {!loading && !error && result && (
+                <div className="flex flex-col gap-5 sm:gap-6">
+                  <CompanyPanel data={result} onRefresh={handleRefresh} refreshing={refreshing} />
+                  <PredictionPanel
+                    companyName={result.record.company_name}
+                    defaultSubscription={result.record.subscription_total}
+                    defaultGmp={result.record.gmp_percent}
+                    actualGainPct={result.record.listing_day_gain_pct}
+                    subscriptionOverride={subscriptionOverride}
+                    gmpOverride={gmpOverride}
+                    onOverrideChange={(sub, gmp) => {
+                      setSubscriptionOverride(sub)
+                      setGmpOverride(gmp)
+                    }}
+                  />
+                  <TrajectoryPanel
+                    companyName={result.record.company_name}
+                    defaultSubscription={result.record.subscription_total}
+                    subscriptionOverride={subscriptionOverride}
+                    gmpOverride={gmpOverride}
+                    record={result.record}
+                  />
+                </div>
+              )}
+              {!loading && !error && !result && searched === false && (
+                <p className="font-mono text-xs text-faint">
+                  Try a recent name — Ola Electric, Swiggy, NSDL, Vishal Mega Mart…
+                </p>
+              )}
             </div>
-          )}
-          {!loading && !error && !result && searched === false && (
-            <p className="font-mono text-xs text-faint">
-              Try a recent name — Ola Electric, Swiggy, NSDL, Vishal Mega Mart…
-            </p>
-          )}
-        </div>
+          </>
+        )}
+
+        {view === 'live' && (
+          <div className="mt-6">
+            <LiveIposPanel />
+          </div>
+        )}
       </div>
     </div>
   )
