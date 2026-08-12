@@ -284,34 +284,34 @@ def _ipogyani_fetch_history(slug, price_band_high):
 #
 # Each IPO is one <a href="/ipo/{slug}"> card. Read with NO separator
 # (a[...].get_text(strip=True), same call the rest of this module makes),
-# every field in the card comes out concatenated with no whitespace
-# between fields that sit in separate child elements, e.g.:
-#   "Dhoot Transmission logoDhoot Transmission10 Aug - 12 Aug, 2026Open
-#    Mainboard Price BandRs 829-871Lot: 17Subscription3.94xDay 2..."
-# Two consequences, both confirmed against the live page:
-#   1. The company name appears twice back-to-back, no separator --
-#      "{name} logo{name}" (once from the logo <img> alt text, once from
-#      the heading). Handled with a regex backreference rather than any
-#      string-splitting/dedup logic.
-#   2. Status/category/day-tag words butt directly against digits or each
-#      other ("2026Open", "OpenMainboard", "3.94xDay 2", "-Not open") with
-#      no space, so a \b-anchored regex hunting for these as standalone
-#      words silently never matches -- \b only fires at a letter/non-letter
-#      transition, and digit->letter or letter->letter transitions don't
-#      qualify. Fixed by matching the whole card as one ordered sequence of
-#      anchored substrings (one regex, DOTALL) instead of independent
-#      \b-bounded lookups.
+# fields that sit in separate child elements come out concatenated with no
+# whitespace between them wherever the source HTML has no whitespace text
+# node there, e.g. (confirmed from real production output, 2026-08-12):
+#   "Dhoot Transmission10 Aug - 12 Aug, 2026Last DayMainboardPrice BandRs
+#    829-871Lot:17Subscription74.15xDay 3Issue SizeRs 3,067CrFresh..."
+# CORRECTED (2026-08-12, second pass): an earlier version of this pattern
+# also expected the company name to appear twice back-to-back ("{name}
+# logo{name}") -- that turned out to be an artifact of how a different
+# fetch tool had converted the logo <img>'s alt text into visible text
+# during testing. BeautifulSoup's get_text() does NOT include img alt
+# attributes at all, so real production text has the name only once. The
+# real, confirmed-from-production issue is: status/category/label words
+# butt directly against digits or each other ("2026Last Day",
+# "MainboardPrice", "Lot:17", "3,067Cr") with no space, so \b-anchored or
+# literal-single-space regex silently fails to match every card -- fixed
+# by matching the whole card as one ordered sequence with \s* (zero-or-
+# more, not exactly-one) between fields.
 # ---------------------------------------------------------------------------
 _LIVE_CARD_RE = re.compile(
-    r"^(?P<name>.+?) logo(?P=name)"
-    r"(?P<open_day>\d{1,2}) (?P<open_mon>[A-Za-z]{3}) - (?P<close_day>\d{1,2}) (?P<close_mon>[A-Za-z]{3}), (?P<year>\d{4})"
+    r"^(?P<name>.+?)"
+    r"(?P<open_day>\d{1,2})\s+(?P<open_mon>[A-Za-z]{3})\s*-\s*(?P<close_day>\d{1,2})\s+(?P<close_mon>[A-Za-z]{3}),\s*(?P<year>\d{4})"
     r"(?P<status>Open|Last Day|Closed|Listing on \d{1,2} [A-Za-z]{3}|Allotment on \d{1,2} [A-Za-z]{3}|Upcoming)"
     r"(?P<category>Mainboard|SME)"
-    r" Price BandRs (?P<band_low>[\d,]+)-(?P<band_high>[\d,]+)"
-    r"Lot: (?P<lot>\d+)"
+    r"\s*Price\s*Band\s*Rs\s*(?P<band_low>[\d,]+)\s*-\s*(?P<band_high>[\d,]+)"
+    r"Lot:\s*(?P<lot>\d+)"
     r"Subscription(?P<sub>[\d.]+x|-)"
     r"(?P<day_tag>Day \d+|Final|Not open)"
-    r"Issue SizeRs (?P<issue_size>[\d,.]+) Cr"
+    r"Issue\s*Size\s*Rs\s*(?P<issue_size>[\d,.]+)\s*Cr"
     r".*?GMP:(?P<gmp_pct>[+-]?[\d.]+)%"
     r".*?AI Gain(?P<ai_pct>[+-]?[\d.]+)%",
     re.DOTALL,
