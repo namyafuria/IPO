@@ -710,6 +710,23 @@ def poll_and_save_open_ipos() -> dict:
 
             summary["companies_saved"].append(company_name)
 
+            # FIX: commit per-company instead of once after the whole loop.
+            # This loop does real network fetches (3 pages/slug, with
+            # rate-limit delays) for every currently-open IPO before this
+            # change reached its single conn.commit() at the very end --
+            # holding SQLite's WAL writer lock for the full duration of
+            # that multi-minute loop. Any other writer (scheduler.py's
+            # sync_active_ipos/sync_recent_listings, which run on their
+            # own timeout=30 connections) blocked behind this one and
+            # failed with "database is locked" once they'd waited past
+            # their own 30s timeout. Committing here instead means the
+            # writer lock is only held for the few upserts belonging to
+            # ONE company at a time, so other writers get a real chance
+            # to interleave. Bonus: if a later company in this loop
+            # throws, everything already committed for earlier companies
+            # in this same run is preserved rather than lost.
+            conn.commit()
+
         # Anything in ipo_live_tracker that's no longer in the open set today
         # has closed since the last poll -- drop it (Step 6's /ipos/open reads
         # this table directly, so it must only ever hold currently-open IPOs).

@@ -23,7 +23,6 @@ as every other module in this project already does.
 
 import re
 import sqlite3
-import difflib
 from pathlib import Path
 from typing import Optional
 
@@ -58,6 +57,58 @@ def normalize_name(name: str) -> str:
     return " ".join(tokens).strip()
 
 
+# --- strict fuzzy matcher (identical logic to gmp_sync.py's strict_match,
+# duplicated here rather than cross-imported -- same "kept in sync on
+# purpose" convention as normalize_name() above) ---
+#
+# FIX (this session): find_company()'s fallback used to be
+# difflib.get_close_matches() at a raw character-similarity cutoff of 0.6.
+# Confirmed via diagnose_fuzzy_matches.py that this matched almost entirely
+# on generic shared suffix words rather than the distinctive part of a
+# company's name -- e.g. "Behari Lal Engineering" (a real, unrelated,
+# brand-new IPO) fuzzy-matched to "TechEra Engineering Limited";
+# "Gaja Alternative Asset Management" matched to "UTI Asset Management
+# Company Ltd". This silently merged live-fetch data for one company into
+# a completely different company's DB row -- e.g. writing/reading a
+# 2024-10-15 listing_date that actually belonged to an unrelated company,
+# which then made live_fetch.py's _already_listed() check wrongly treat
+# a brand-new IPO as already listed and permanently skip fetching its
+# real data.
+#
+# Replaced with strict_match: requires 2+ significant words (or one word
+# >= 6 chars) and a real word-boundary substring match, not a raw
+# similarity score. This is intentionally less typo-tolerant than the old
+# difflib fallback -- a genuinely misspelled search query may now return
+# "not found" instead of a guess -- traded off deliberately in favor of
+# never silently attaching one company's data to a different company's row.
+_STRICT_SUFFIXES_RE = re.compile(r"\b(limited|ltd|private|pvt|company|co|the|formerly|india)\b", re.IGNORECASE)
+
+
+def _strict_normalize(s: str) -> str:
+    s = s.lower()
+    s = re.sub(r"\(.*?\)", " ", s)
+    s = _STRICT_SUFFIXES_RE.sub(" ", s)
+    s = re.sub(r"[^a-z0-9 ]", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def strict_match(name: str, db_names: list[str]) -> Optional[str]:
+    n = _strict_normalize(name)
+    toks = n.split()
+    if not toks:
+        return None
+    significant = len(toks) >= 2 or (len(toks) == 1 and len(toks[0]) >= 6)
+    if not significant:
+        return None
+    pattern = r"\b" + re.escape(n) + r"\b"
+    candidates = set()
+    for db_name in db_names:
+        dbn = _strict_normalize(db_name)
+        if dbn and (re.search(pattern, dbn) or re.search(r"\b" + re.escape(dbn) + r"\b", n)):
+            candidates.add(db_name)
+    return next(iter(candidates)) if len(candidates) == 1 else None
+
+
 def get_connection() -> sqlite3.Connection:
     # timeout=30 + WAL: this is the busiest connection path in the project
     # (every /api/company, /api/predict*, and upsert_record call goes
@@ -74,8 +125,9 @@ def get_connection() -> sqlite3.Connection:
 
 
 def find_company(query: str) -> tuple[Optional[IPORecord], bool]:
-    """Returns (record, exact_match). record is None if nothing close enough
-    was found (fuzzy cutoff 0.6, same threshold predict_by_name.py uses)."""
+    """Returns (record, exact_match). record is None if nothing matched --
+    see strict_match()'s docstring above for why the old difflib-based
+    fuzzy fallback was replaced."""
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -88,10 +140,9 @@ def find_company(query: str) -> tuple[Optional[IPORecord], bool]:
                 return IPORecord(**dict(row)), True
 
         names = [row["company_name"] for row in rows]
-        norm_names = [normalize_name(n) for n in names]
-        close = difflib.get_close_matches(target, norm_names, n=1, cutoff=0.6)
-        if close:
-            idx = norm_names.index(close[0])
+        matched_name = strict_match(query, names)
+        if matched_name is not None:
+            idx = names.index(matched_name)
             return IPORecord(**dict(rows[idx])), False
 
         return None, False
