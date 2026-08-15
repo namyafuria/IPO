@@ -2,7 +2,7 @@ import logging
 import sqlite3
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import config, live_fetch
@@ -45,6 +45,45 @@ def _maybe_start_scheduler():
     if os.environ.get("RUN_SCHEDULER") == "1":
         from .scheduler import start_scheduler
         start_scheduler()
+
+
+@app.get("/api/debug/status")
+def debug_status():
+    """Diagnostic endpoint -- reports actual DB/scheduler state directly,
+    so 'are IPOs actually in the DB, and is anything keeping them fresh'
+    can be checked with one request instead of reading Render logs.
+
+    Added 2026-08-15 while chasing an empty-frontend bug that turned out
+    to be about which process/schedule was populating the DB, not the
+    application code -- this makes that state directly inspectable going
+    forward instead of inferring it from log timestamps."""
+    import os
+    conn = None
+    try:
+        from . import db
+        conn = db.get_connection()
+        tracker_count = conn.execute("SELECT COUNT(*) AS c FROM ipo_live_tracker").fetchone()["c"]
+        tracker_latest = conn.execute("SELECT MAX(as_of) AS m FROM ipo_live_tracker").fetchone()["m"]
+        master_count = conn.execute("SELECT COUNT(*) AS c FROM ipo_master_records").fetchone()["c"]
+        master_latest = conn.execute("SELECT MAX(last_updated) AS m FROM ipo_master_records").fetchone()["m"]
+    finally:
+        if conn is not None:
+            conn.close()
+    return {
+        "ipo_live_tracker": {"row_count": tracker_count, "latest_as_of": tracker_latest},
+        "ipo_master_records": {"row_count": master_count, "latest_last_updated": master_latest},
+        "run_scheduler_env_set": os.environ.get("RUN_SCHEDULER") == "1",
+        "render_git_commit": os.environ.get("RENDER_GIT_COMMIT"),
+        "note": (
+            "If ipo_live_tracker.row_count is 0, POST /api/sync has never "
+            "completed successfully on this deployment yet -- it must be "
+            "called (by you, or by an external cron) at least once, and "
+            "then on a recurring schedule, for the frontend to show data. "
+            "run_scheduler_env_set=false means nothing in-process will "
+            "ever call it automatically -- you need an external cron "
+            "(e.g. cron-job.org) hitting POST /api/sync every 10-15 min."
+        ),
+    }
 
 
 @app.get("/api/health")
@@ -243,22 +282,35 @@ def trigger_gmp_sync(sources: Optional[str] = "ipogyani,ipowatch", ipowatch_limi
 
 
 @app.post("/api/sync")
-def trigger_sync(background_tasks: BackgroundTasks):
+def trigger_sync():
     """Manually kick the same sync the background scheduler runs -- this is
-    the endpoint an external cron (Vercel Cron / GitHub Actions / etc.)
-    should call on a serverless deployment, since a serverless function
-    can't run its own persistent background loop. See scheduler.py.
+    the endpoint an external cron (Vercel Cron / GitHub Actions /
+    cron-job.org / etc.) should call, since a serverless OR free-tier host
+    can't be trusted to keep a background task alive after a request
+    finishes (see FIX LOG below). Deliberately BLOCKING -- an external
+    cron can wait minutes for a 200, unlike a browser tab.
 
-    FIX (2026-08-15): run_sync_once() now runs as a background task rather
-    than being awaited here -- it includes sync_ipoji_open_ipos(), which
-    does 3 page-fetches x a 1.5s+ delay per currently-open IPO (~40
-    companies -> 100+ sequential requests, 3+ minutes). Blocking this
-    request on that made every caller (including an external cron with
-    its own timeout) wait for the full run. Same reasoning as
-    /api/sync_and_predict's step 1 above."""
+    FIX (2026-08-15): tried making this fire-and-forget via FastAPI
+    BackgroundTasks. That doesn't work on Render's free tier: background
+    tasks only start AFTER the HTTP response is sent, and Render can
+    (and did, per production logs) spin the instance down as soon as the
+    request/response cycle looks finished -- killing the in-progress
+    ipoji scrape mid-run with no error logged, because the process itself
+    was terminated, not the scrape. Blocking here means the request stays
+    "in flight" for the whole duration, which is exactly what keeps the
+    instance alive until the sync actually finishes.
+
+    THIS ROUTE MUST BE CALLED ON A SCHEDULE BY SOMETHING EXTERNAL --
+    cron-job.org hitting this URL every 10-15 minutes is the simplest
+    option on Render's free tier. Nothing in this codebase calls this
+    route automatically unless RUN_SCHEDULER=1 is set (see
+    _maybe_start_scheduler() above) -- and even then, the free tier can
+    still spin the instance down between the scheduler's own ticks if
+    there's no incoming HTTP traffic, so an external cron hitting this
+    URL is the only fully reliable option on this tier regardless."""
     from .scheduler import run_sync_once
-    background_tasks.add_task(run_sync_once)
-    return {"status": "sync triggered (running in background)"}
+    run_sync_once()
+    return {"status": "sync complete"}
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +330,6 @@ def trigger_sync(background_tasks: BackgroundTasks):
 # ---------------------------------------------------------------------------
 @app.post("/api/sync_and_predict")
 def sync_and_predict(
-    background_tasks: BackgroundTasks,
     sources: Optional[str] = "ipogyani",
     track_days: Optional[int] = None,
     include_trajectory: bool = True,
@@ -289,58 +340,56 @@ def sync_and_predict(
     cron job) should call, rather than /api/sync/gmp alone.
 
     Steps, in order:
-      1. sync_ipoji_open_ipos() is kicked off as a BACKGROUND task -- FIX
-         (2026-08-15): this used to run synchronously, first thing, in
-         this same request. That's 3 page-fetches x a 1.5s+ delay PER
-         OPEN IPO (see ipoji.py's fetch_and_parse_ipo()/DELAY_SECONDS) --
-         with ~40 companies currently open, that's 100+ sequential
-         requests and 3+ minutes of blocking work on every single
-         refresh click, which blows straight through the frontend's
-         request timeout ("API is taking a while to respond..."). It's
-         now fire-and-forget: this request returns using whatever
-         ipo_live_tracker already has (from the last successful poll --
-         either the hourly background job, if RUN_SCHEDULER=1, or a
-         previous call to this same route), while the fresh scrape runs
-         after the response is sent and will be picked up by the NEXT
-         refresh. ipoji.py's per-company commit (see
-         poll_and_save_open_ipos()'s own fix-log note) means a slow or
-         interrupted background poll still leaves each company's data
-         usable as it completes, rather than all-or-nothing.
-      2. sync_active_ipos() -- reads the (possibly still-being-updated)
-         ipo_live_tracker synchronously; this is just a DB read plus one
-         Indian-API call per company, not a scrape, so it stays in the
-         request path. Writes open_date/close_date/subscription_total/
-         issue_category/etc. into ipo_master_records, which is what
-         find_live_and_recent_companies() below actually filters on.
-      3. run_gmp_sync(sources) -- refreshes gmp_trend and, via the fixed
+      1. sync_active_ipos() -- a DB read (ipo_live_tracker) plus one
+         Indian-API call per already-tracked company, NOT a scrape, so
+         it's fast enough to run synchronously here. Writes open_date/
+         close_date/subscription_total/issue_category/etc. into
+         ipo_master_records, which is what find_live_and_recent_
+         companies() below actually filters on.
+
+         FIX (2026-08-15): this route used to also try to trigger
+         sync_ipoji_open_ipos() itself (first synchronously, then via a
+         FastAPI BackgroundTask) -- both failed for different reasons.
+         Synchronously, it's 3 page-fetches x 1.5s+ delay per open IPO
+         (~40 companies -> 100+ requests, 3+ minutes), blowing through
+         the frontend's request timeout. As a BackgroundTask, it doesn't
+         even start until AFTER this response is sent, and Render's free
+         tier can spin the instance down as soon as the response looks
+         complete -- silently killing the scrape mid-run with nothing
+         logged, since the *process* gets terminated, not the task.
+         There's no reliable way to run a multi-minute scrape inside a
+         request/response cycle on this hosting tier.
+
+         The fix is to not try: this route now ONLY reads whatever
+         ipo_live_tracker / ipo_master_records already have. Keeping that
+         data fresh is POST /api/sync's job -- see that route's docstring
+         -- which MUST be called on a schedule by something external
+         (e.g. cron-job.org every 10-15 min) for this route to ever
+         return non-empty results on a free-tier deployment.
+      2. run_gmp_sync(sources) -- refreshes gmp_trend and, via the fixed
          backfill step, ipo_master_records.gmp_percent (see gmp_sync.py).
-      4. Finds every company currently open for bidding, or listed within
+      3. Finds every company currently open for bidding, or listed within
          the last `track_days` days (defaults to config.POST_LISTING_TRACK_DAYS).
-      5. Calls predict_for_company() and, if include_trajectory, also
+      4. Calls predict_for_company() and, if include_trajectory, also
          predict_trajectory_for_company() for each -- with NO
          subscription/gmp override, so both read whatever the sync step
          just wrote into the DB.
 
     `sources`: same comma-separated ipogyani/ipowatch list as /api/sync/gmp
-    -- this only controls run_gmp_sync's gmp_trend refresh (step 3); it has
-    no effect on step 1/2, which are always ipoji now regardless of this
-    param. Defaults to ipogyani only here (ipowatch is slow -- see that
-    route's docstring -- so it's opt-in for this combined call rather than
-    default).
+    (controls step 2 only).
 
     Returns: {"sync": <run_gmp_sync result>, "predictions": [ {company_name,
     gain, trajectory, error}, ... ]}. A per-company `error` field (instead
     of raising) means that one company's prediction failed -- the rest of
-    the batch still returns. Note the response no longer waits on the
-    ipoji poll (see step 1) -- if ipo_live_tracker was still empty/stale
-    going into this call, `predictions` may be thin on this call and
-    fuller on the next one, once the background poll has landed.
+    the batch still returns. If `predictions` comes back empty or thin,
+    that means POST /api/sync hasn't run recently enough -- check that
+    it's wired up on an external schedule (see GET /api/debug/status
+    below to check directly, without digging through logs).
     """
     # Local import -- keeps scheduler.py (and its apscheduler dependency)
     # lazy-loaded, same pattern as /api/sync below, rather than a hard
     # module-level import that every request to this file would then need.
-    from .scheduler import sync_ipoji_open_ipos, sync_active_ipos
-    background_tasks.add_task(sync_ipoji_open_ipos)
+    from .scheduler import sync_active_ipos
     sync_active_ipos()
     src_tuple = tuple(s.strip() for s in sources.split(",") if s.strip())
     sync_result = run_gmp_sync(sources=src_tuple)
