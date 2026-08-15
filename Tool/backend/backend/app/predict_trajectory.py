@@ -61,6 +61,7 @@ re-checked and found small (~1pt either way) -- not worth the added
 complexity there, matching the original call.
 """
 
+import datetime
 import sys
 from pathlib import Path
 from typing import Optional
@@ -80,8 +81,10 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from ipo_model_utils import SectorTargetEncoder  # noqa: F401,E402 -- required for unpickling
+from . import live_fetch
 from .db import find_company
 from .schemas import IPORecord
+from .predict_trajectory_rolling import predict_trajectory_rolling
 
 HORIZONS = [2, 3, 5, 10]
 CATEGORIES = ["Mainboard", "SME"]
@@ -314,3 +317,75 @@ def predict_trajectory_for_company(
             "price_day10": record.price_day10,
         } if record.price_day1 is not None else None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Smart dispatch: per-horizon switch between the pre-listing model above and
+# the rolling model (predict_trajectory_rolling.py), rather than a single
+# company-level switch. day2/day3 never have a rolling variant (nothing to
+# roll from that early). day5 switches to rolling once price_day2 is known;
+# day10 switches once price_day5 is known -- independently, so a company can
+# have day5 on rolling while day10 is still pre-listing.
+# ---------------------------------------------------------------------------
+ROLLING_SPECS = [("day5", "price_day2"), ("day10", "price_day5")]
+
+
+def predict_trajectory_smart_for_company(
+    name: str,
+    subscription_override: Optional[float] = None,
+    gmp_override: Optional[float] = None,
+) -> dict:
+    """Per-horizon dispatch between pre-listing and rolling models.
+
+    day2/day3 always use the pre-listing model (no rolling variant exists
+    for them). day5 switches to rolling once price_day2 is known; day10
+    switches once price_day5 is known -- independently.
+
+    If the company has listed but price_day1 is still empty (listed but
+    never fetched, vs genuinely upcoming), this fetches synchronously via
+    live_fetch.fetch_and_upsert() before deciding -- a stale DB row should
+    not be silently read as "still pre-listing".
+
+    Each horizon's result is tagged with a "mode" key ("pre_listing" or
+    "rolling") so callers (and the frontend) don't have to infer mode from
+    which price fields are null.
+    """
+    record, exact = find_company(name)
+    if record is None:
+        raise TrajectoryPredictionError(f"No match found for '{name}' in the database.")
+
+    listed = (
+        record.listing_date is not None
+        and record.listing_date[:10] <= datetime.date.today().isoformat()
+    )
+    if listed and record.price_day1 is None:
+        try:
+            live_fetch.fetch_and_upsert(name)
+        except LookupError:
+            pass  # record already exists in DB; this shouldn't fire in practice
+        record, exact = find_company(name)  # re-read whatever the fetch just wrote
+
+    base = predict_trajectory_for_company(name, subscription_override, gmp_override)
+    horizons = base["horizons"]
+    for h in horizons:
+        horizons[h]["mode"] = "pre_listing"
+
+    for horizon, known_col in ROLLING_SPECS:
+        known_price = getattr(record, known_col, None)
+        if known_price is None or record.price_day1 is None:
+            continue  # stays pre_listing, already tagged above
+
+        rolling_result = predict_trajectory_rolling(
+            category=record.issue_category,
+            horizon=horizon,
+            subscription_total=base["inputs_used"]["subscription_total"],
+            sector=record.sector,
+            price_day1=record.price_day1,
+            known_price=known_price,
+        )
+        if rolling_result is not None:
+            rolling_result["mode"] = "rolling"
+            horizons[horizon] = rolling_result
+
+    base["horizons"] = horizons
+    return base

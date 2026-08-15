@@ -25,6 +25,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from . import config, db, live_fetch
 from .gmp_sync import run_gmp_sync, _ipogyani_fetch_live_status
+from .services import ipoji
 
 logger = logging.getLogger("ipo_tool.scheduler")
 
@@ -102,18 +103,74 @@ def sync_gmp_trend():
         logger.warning("GMP trend sync failed: %s", e)
 
 
+def sync_ipoji_open_ipos():
+    """Pass 4 (Step 3): IPO Ji live poll -- discovers every currently-open
+    IPO on ipoji.com and upserts gmp_trend / subscription_daywise /
+    ipo_live_tracker (see app/services/ipoji.py). Same 'one bad source
+    shouldn't stop the batch' resilience pattern as passes 1-3.
+
+    Unlike ipowatch (see module docstring -- deliberately opt-in-only via
+    POST /api/sync/gmp until proven against the live site), this source
+    has already been smoke-tested (Step 1/2), so it's wired straight into
+    the automatic cadence rather than held back as manual-only.
+
+    Runs on its OWN hourly job in start_scheduler() below, separate from
+    SYNC_INTERVAL_MINUTES -- Step 3 asked for this specifically on an
+    hourly cadence, which SYNC_INTERVAL_MINUTES isn't guaranteed to match.
+    It's also called from run_sync_once() so the existing manual /api/sync
+    button fires it too (the 'on demand' requirement) -- meaning on a host
+    where both the hourly job and a manual click land close together, IPO
+    Ji could get polled twice in quick succession. That's wasted work, not
+    a correctness problem (Step 1's upsert keys make a repeat poll a no-op
+    beyond overwriting with the same fresh values), so left as-is rather
+    than adding de-dupe/locking complexity for a rare, harmless overlap."""
+    try:
+        result = ipoji.poll_and_save_open_ipos()
+        logger.info(
+            "IPO Ji live sync: %d companies saved, %d unresolved names, %d fetch errors.",
+            len(result["companies_saved"]),
+            len(result["unresolved_company_names"]),
+            len(result["fetch_errors"]),
+        )
+        if result["unresolved_company_names"]:
+            # Not a failure -- these companies still got saved under their
+            # slug-derived name (see resolve_company_name() in ipoji.py) --
+            # but they didn't line up with an existing ipo_master_records
+            # row, so they're worth a human glance rather than silent trust.
+            logger.warning(
+                "IPO Ji sync: unresolved company names (using slug-derived name instead): %s",
+                result["unresolved_company_names"],
+            )
+        return result
+    except Exception as e:  # noqa: BLE001 -- same "don't take down the batch" pattern as passes 1-3
+        logger.warning("IPO Ji live sync failed: %s", e)
+        return None
+
+
 def run_sync_once():
     sync_active_ipos()
     sync_recent_listings()
     sync_gmp_trend()
+    sync_ipoji_open_ipos()
 
 
 def start_scheduler() -> BackgroundScheduler:
     scheduler = BackgroundScheduler()
     scheduler.add_job(run_sync_once, "interval", minutes=config.SYNC_INTERVAL_MINUTES,
                        id="ipo_sync", next_run_time=None)
+    # Separate hourly job for the IPO Ji poll (Step 3's explicit ask), on
+    # the SAME scheduler instance -- not a second BackgroundScheduler --
+    # so both jobs share one thread pool and stop together on shutdown.
+    # sync_ipoji_open_ipos() is ALSO reachable via run_sync_once() above
+    # (the manual /api/sync button), so this job id lets it run
+    # independently of whatever SYNC_INTERVAL_MINUTES happens to be.
+    scheduler.add_job(sync_ipoji_open_ipos, "interval", hours=1,
+                       id="ipoji_sync", next_run_time=None)
     scheduler.start()
-    logger.info("Background sync started, every %s minutes.", config.SYNC_INTERVAL_MINUTES)
+    logger.info(
+        "Background sync started: full sync every %s minutes, IPO Ji poll every hour.",
+        config.SYNC_INTERVAL_MINUTES,
+    )
     return scheduler
 
 
@@ -130,3 +187,14 @@ def start_scheduler() -> BackgroundScheduler:
 # sync_gmp_trend() above) -- call POST /api/sync/gmp directly for that,
 # with a small ipowatch_limit, from its own separate cron entry once you've
 # confirmed it works, rather than folding it into SYNC_INTERVAL_MINUTES.
+#
+# The IPO Ji poll (sync_ipoji_open_ipos) runs as its OWN hourly job here,
+# separate from SYNC_INTERVAL_MINUTES -- see start_scheduler() above. On a
+# serverless host, a single external cron hitting POST /api/sync on
+# SYNC_INTERVAL_MINUTES will therefore run the IPO Ji poll at that SAME
+# cadence too (run_sync_once() calls it), not genuinely hourly, unless
+# SYNC_INTERVAL_MINUTES already happens to be 60. If the two need to
+# diverge on a serverless deployment, add a second external cron entry
+# calling POST /api/sync on its own hourly schedule -- the route is
+# idempotent-safe to call more often than needed (see
+# sync_ipoji_open_ipos()'s docstring on repeat-poll safety).

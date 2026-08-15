@@ -1,34 +1,62 @@
 import { useEffect, useState, useCallback } from 'react'
 import BucketBar from './BucketBar'
 import Badge from './Badge'
-import { getTrajectory, ApiError } from '../api'
+import { getTrajectorySmart, ApiError } from '../api'
 import { fmtProb, fmtPct, gainClass } from '../format'
 
-// Confirmed against the real backend (app/predict_trajectory.py, 2026-08-09):
-// `horizons` is a dict keyed "day2"/"day3"/"day5"/"day10", each holding
-// { buckets, top_bucket, target_definition, reliable, reliability_note,
-// model_stats: { validated_top_bucket_accuracy, validated_naive_top_bucket_accuracy, ... } }.
-// Reliable horizons per current training: Mainboard day2/day3/day5 only —
-// Mainboard day10 and every SME horizon are flagged unreliable by the API
-// itself via `reliable`, so the UI just reads that field rather than
-// hardcoding which horizons are which.
+// Backed by /api/predict_trajectory_smart, which dispatches per-horizon
+// between the pre-listing model (predict_trajectory.py) and the rolling
+// model (predict_trajectory_rolling.py) and tags each horizon with `mode`.
+//
+// VERIFIED this session against the real backend response (both a real
+// pre_listing horizon and a real rolling horizon, same company): the two
+// modes return the IDENTICAL field shape -- buckets (with most_likely
+// already set per-bucket), reliability_note, and
+// model_stats.validated_top_bucket_accuracy /
+// validated_naive_top_bucket_accuracy already as 0-1 fractions. No
+// per-mode branching needed; the previous dual-branch version's assumed
+// rolling shape (bucket_probabilities/predicted_bucket/basis/
+// validated_holdout_accuracy_pct) did not match the real API and would
+// have silently rendered rolling horizons as empty/wrong.
+//
+// The rolling mode does add a few extra fields not present in pre_listing
+// (known_price, price_day1, observed_move_pct, feature_day_col,
+// target_day_col). observed_move_pct is now surfaced below each rolling
+// horizon's footer (h.observedMovePct) as "actual dayX->dayY move: +N%";
+// the rest remain unused.
 function normalizeHorizons(data) {
   const raw = data.horizons ?? {}
-  return Object.entries(raw).map(([key, h]) => ({
-    day: h.day ?? Number(key.replace(/\D/g, '')),
-    label: `Day ${key.replace(/\D/g, '')}`,
-    buckets: h.buckets ?? [],
-    reliable: h.reliable,
-    reliabilityNote: h.reliability_note,
-    modelAcc: h.model_stats?.validated_top_bucket_accuracy,
-    naiveAcc: h.model_stats?.validated_naive_top_bucket_accuracy,
-  }))
+  return Object.entries(raw).map(([key, h]) => {
+    const day = h.day ?? Number(key.replace(/\D/g, ''))
+    const label = `Day ${key.replace(/\D/g, '')}`
+    const mode = h.mode ?? 'pre_listing'
+
+    return {
+      day, label, mode,
+      buckets: h.buckets ?? [],
+      reliable: h.reliable,
+      reliabilityNote: h.reliability_note,
+      modelAcc: h.model_stats?.validated_top_bucket_accuracy,
+      naiveAcc: h.model_stats?.validated_naive_top_bucket_accuracy,
+      observedMovePct: h.observed_move_pct,
+    }
+  })
 }
 
 // Actual outcome for a given horizon, computed from the company record already
 // in hand (no extra API call needed). Basis is the listing-day close
 // (price_day1), matching the "% change from listing-day price" convention
 // the project settled on for Problem B.
+// Rolling-mode horizons roll from a known earlier actual day: day5's model
+// uses the day1->day2 move, day10's uses day1->day5 (see main.py's rolling
+// route / predict_trajectory_rolling.py). Only those two day values have a
+// rolling variant at all, so this only ever needs to cover them.
+function observedMoveLabel(day) {
+  if (day === 5) return 'day1\u2192day2 move'
+  if (day === 10) return 'day1\u2192day5 move'
+  return null
+}
+
 function actualForDay(record, day) {
   if (!record) return null
   const dayPrice = record[`price_day${day}`]
@@ -47,7 +75,7 @@ export default function TrajectoryPanel({ companyName, defaultSubscription, subs
       setLoading(true)
       setError(null)
       try {
-        const result = await getTrajectory(companyName, overrides)
+        const result = await getTrajectorySmart(companyName, overrides)
         setData(result)
       } catch (err) {
         setData(null)
@@ -121,6 +149,9 @@ export default function TrajectoryPanel({ companyName, defaultSubscription, subs
                         actual {fmtPct(actual.gainPct)}
                       </span>
                     )}
+                    <Badge tone={h.mode === 'rolling' ? 'gain' : 'neutral'}>
+                      {h.mode === 'rolling' ? 'using actual data' : 'pre-listing estimate'}
+                    </Badge>
                     {h.reliable === false && <Badge tone="loss">low reliability</Badge>}
                   </div>
                 </div>
@@ -142,6 +173,15 @@ export default function TrajectoryPanel({ companyName, defaultSubscription, subs
                   <p className="mt-3 border-t border-border pt-2 font-mono text-[10px] text-faint">
                     {h.modelAcc != null ? fmtProb(h.modelAcc) : '—'}
                     {h.naiveAcc != null && <> vs {fmtProb(h.naiveAcc)} naive</>}
+                  </p>
+                )}
+
+                {h.mode === 'rolling' && h.observedMovePct != null && observedMoveLabel(h.day) && (
+                  <p className="mt-2 font-mono text-[10px] text-faint">
+                    actual {observedMoveLabel(h.day)}:{' '}
+                    <span className={`num ${gainClass(h.observedMovePct)}`}>
+                      {fmtPct(h.observedMovePct)}
+                    </span>
                   </p>
                 )}
               </div>

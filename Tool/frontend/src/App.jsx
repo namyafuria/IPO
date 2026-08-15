@@ -5,6 +5,8 @@ import PredictionPanel from './components/PredictionPanel'
 import TrajectoryPanel from './components/TrajectoryPanel'
 import ErrorPanel from './components/ErrorPanel'
 import LiveIposPanel from './components/LiveIposPanel'
+import OpenIposPanel from './components/OpenIposPanel'
+import ListedIposPanel from './components/ListedIposPanel'
 import { getCompany, refreshCompany, ApiError } from './api'
 
 export default function App() {
@@ -92,6 +94,28 @@ export default function App() {
           >
             Live IPOs
           </button>
+          <button
+            type="button"
+            onClick={() => setView('open')}
+            className={`px-3 py-2 font-mono text-xs uppercase tracking-wider transition-colors ${
+              view === 'open'
+                ? 'border-b-2 border-amber text-amber'
+                : 'border-b-2 border-transparent text-muted hover:text-ink'
+            }`}
+          >
+            Open
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('listed')}
+            className={`px-3 py-2 font-mono text-xs uppercase tracking-wider transition-colors ${
+              view === 'listed'
+                ? 'border-b-2 border-amber text-amber'
+                : 'border-b-2 border-transparent text-muted hover:text-ink'
+            }`}
+          >
+            Listed
+          </button>
         </div>
 
         {view === 'search' && (
@@ -149,6 +173,18 @@ export default function App() {
         {view === 'live' && (
           <div className="mt-6">
             <LiveIposPanel />
+          </div>
+        )}
+
+        {view === 'open' && (
+          <div className="mt-6">
+            <OpenIposPanel />
+          </div>
+        )}
+
+        {view === 'listed' && (
+          <div className="mt-6">
+            <ListedIposPanel />
           </div>
         )}
       </div>

@@ -8,9 +8,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import config, live_fetch
 from .db import find_company, find_live_and_recent_companies
 from .predict import predict_for_company, PredictionError
-from .predict_trajectory import predict_trajectory_for_company, TrajectoryPredictionError
+from .predict_trajectory import (
+    predict_trajectory_for_company,
+    predict_trajectory_smart_for_company,
+    TrajectoryPredictionError,
+)
 from .predict_trajectory_rolling import predict_trajectory_rolling
 from .gmp_sync import run_gmp_sync
+from .routers_trajectory import router as trajectory_router
+from .routers_live import router as live_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ipo_tool.main")
@@ -24,6 +30,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(trajectory_router)
+app.include_router(live_router)
 
 
 @app.on_event("startup")
@@ -178,6 +187,38 @@ def predict_trajectory_rolling_route(name: str, horizon: str):
     result["company_name"] = record.company_name
     result["exact_match"] = exact
     return result
+
+
+@app.get("/api/predict_trajectory_smart/{name}")
+def predict_trajectory_smart(
+    name: str,
+    subscription: Optional[float] = None,
+    gmp: Optional[float] = None,
+):
+    """Problem B, per-horizon smart dispatch: for each of day2/day3/day5/
+    day10, uses the rolling model if that horizon's prerequisite actual
+    price is already in the DB (price_day2 for day5, price_day5 for
+    day10), otherwise falls back to the pre-listing model. day2/day3
+    always use the pre-listing model (no rolling variant exists).
+
+    Unlike /api/predict_trajectory_rolling/{name}, this never 409s -- a
+    horizon whose prerequisite data isn't ready yet is just silently
+    served pre-listing. If the company has already listed but
+    price_day1 isn't in the DB yet, this fetches it synchronously first
+    rather than treating the company as still pre-listing.
+
+    Each horizon in the response carries a "mode" field ("pre_listing" or
+    "rolling") so the frontend can show which basis was used, instead of
+    inferring it from which price fields are null.
+
+    The existing /api/predict_trajectory_rolling/{name} route is left as-is
+    for a frontend that wants to explicitly force/check rolling status;
+    this is the new default the frontend should call instead.
+    """
+    try:
+        return predict_trajectory_smart_for_company(name, subscription_override=subscription, gmp_override=gmp)
+    except TrajectoryPredictionError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.post("/api/sync/gmp")
