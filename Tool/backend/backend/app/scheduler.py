@@ -1,8 +1,10 @@
 """
 Background sync -- periodically refreshes:
-  1. Every ipogyani "active" IPO (open/awaiting-allotment/upcoming), so the
-     DB stays current on subscription/GMP/dates without anyone having to
-     search for it. (Was IPO Guru until 2026-08-12 -- see sync_active_ipos().)
+  1. Every IPO currently in ipo_live_tracker (i.e. everything ipoji.com's
+     open pages had on the latest poll -- see sync_ipoji_open_ipos()), so
+     the DB stays current on subscription/GMP/dates without anyone having
+     to search for it. (Was IPO Guru until 2026-08-12, then ipogyani until
+     2026-08-15 -- see sync_active_ipos().)
   2. Every DB row still within POST_LISTING_TRACK_DAYS of its listing_date,
      so price_day2/3/5/10 and current_price fill in as the days pass.
   3. Live GMP-trend history (ipogyani.com) for every currently-live IPO,
@@ -24,45 +26,56 @@ import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from . import config, db, live_fetch
-from .gmp_sync import run_gmp_sync, _ipogyani_fetch_live_status
+from .gmp_sync import run_gmp_sync
 from .fetchers import ipoji
 
 logger = logging.getLogger("ipo_tool.scheduler")
 
 
 def sync_active_ipos():
-    """Pass 1: everything ipogyani's /live-ipo page currently considers
-    active (open, awaiting allotment/listing, or upcoming).
+    """Pass 1: everything currently in ipo_live_tracker -- i.e. every IPO
+    ipoji.com's open pages had on the most recent poll (see
+    sync_ipoji_open_ipos() / ipoji.poll_and_save_open_ipos()).
 
-    FIX (2026-08-12): was ipoguru.fetch_active_ipos(), which has been
-    failing silently on every call since IPOGURU_API_KEY was never set on
-    Render -- see gmp_sync.py's _ipogyani_fetch_live_status() docstring.
-    Swapped to that function instead. Each call already goes through
-    live_fetch.fetch_and_upsert(), which merges in price_band/gmp_percent
-    from this same source -- so this pass now also writes real
-    open_date/close_date/allotment_date/listing_date into
-    ipo_master_records, which is what find_live_and_recent_companies()
-    (the "LIVE IPOS" tab) actually reads. issue_category still isn't set
-    by this path directly; see live_fetch.py's own fix-log note on that."""
+    FIX (2026-08-15): ipogyani is no longer used anywhere in this project
+    -- this pass now reads the already-scraped ipo_live_tracker table
+    (a local DB read) instead of calling gmp_sync._ipogyani_fetch_live_
+    status() over the network. Two things this fixes together:
+      1. The active-IPO source is ipoji now, per project decision.
+      2. This is also what kills the old 12x-redundant-fetch bug: pass 4
+         (sync_ipoji_open_ipos, now moved BEFORE this pass in
+         run_sync_once() -- see below) already scrapes every open
+         company's slug once each (3 requests/slug + rate-limit delays)
+         to populate ipo_live_tracker. This pass just reuses those rows
+         instead of re-fetching per company. Each row is passed straight
+         into fetch_and_upsert() as `ipoji_row` so live_fetch.py doesn't
+         even need a per-company DB query, let alone a network call.
+
+    NOTE: on the very first sync after a fresh deploy, ipo_live_tracker
+    will be empty until pass 4 has run once, so this pass will
+    legitimately find nothing to do that cycle. It self-heals the next
+    cycle (run_sync_once() always runs pass 4 first now) -- not handled
+    specially beyond the warning below."""
+    conn = db.get_connection()
     try:
-        active = _ipogyani_fetch_live_status()
-    except Exception as e:  # noqa: BLE001 -- one bad source call shouldn't stop the batch
-        logger.warning("Could not fetch active IPO list from ipogyani: %s", e)
+        cur = conn.execute("SELECT * FROM ipo_live_tracker")
+        rows = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+    if not rows:
+        logger.warning(
+            "ipo_live_tracker is empty -- nothing for sync_active_ipos to do this cycle "
+            "(expected on the very first run, before sync_ipoji_open_ipos has polled once)."
+        )
         return
-    if not active:
-        # gmp_sync.py's _ipogyani_fetch_live_status() logs its own detailed
-        # warning distinguishing "0 cards found at all" vs "cards found but
-        # none matched" -- check ipo_tool.gmp_sync log lines for the real
-        # cause. This line just confirms the pass genuinely got nothing,
-        # rather than skipped writes looking identical to "no companies live".
-        logger.warning("ipogyani active-IPO list came back empty -- see ipo_tool.gmp_sync warnings above for why.")
-        return
-    for ipo in active:
-        name = ipo.get("company_name")
+
+    for row in rows:
+        name = row.get("company_name")
         if not name:
             continue
         try:
-            live_fetch.fetch_and_upsert(name)
+            live_fetch.fetch_and_upsert(name, ipoji_row=row)
         except Exception as e:  # noqa: BLE001 -- one bad company shouldn't stop the batch
             logger.warning("Sync failed for %r: %s", name, e)
 
@@ -148,10 +161,14 @@ def sync_ipoji_open_ipos():
 
 
 def run_sync_once():
+    # FIX (2026-08-15): sync_ipoji_open_ipos() now runs FIRST -- it's the
+    # one that actually scrapes ipoji.com and populates ipo_live_tracker.
+    # sync_active_ipos() (below) only reads that table now; it needs this
+    # pass to have run first in the same cycle, or it'll find nothing.
+    sync_ipoji_open_ipos()
     sync_active_ipos()
     sync_recent_listings()
     sync_gmp_trend()
-    sync_ipoji_open_ipos()
 
 
 def start_scheduler() -> BackgroundScheduler:

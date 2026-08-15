@@ -2,8 +2,11 @@
 Live-fetch orchestrator.
 
 Split of responsibility (per project decision):
-  - ipogyani.com: pre-listing data -- price band + GMP-derived est_profit_pct,
-    via the same live-IPO scrape gmp_sync.py already does for gmp_trend.
+  - ipoji.com:    pre-listing data -- price band + GMP-derived est_profit_pct,
+                  subscription, and issue_category. Read from ipo_live_tracker
+                  (see FIX LOG 5 below), which sync_ipoji_open_ipos()'s hourly
+                  poll (scheduler.py) already scrapes and populates -- this
+                  module does not hit ipoji.com over the network itself.
   - Indian API:   post-listing data -- sector, PE/ROE/debt-equity, and the
                   day1/2/3/5/10 + current price trail once the company lists.
 
@@ -38,13 +41,28 @@ source's data from being saved.
    still comes from _ipogyani_fetch_live_status() above, by some hours).
    These fields existed in schemas.py but were never populated by any
    fetch path before this.
-4. fetch_and_upsert() now skips the ipogyani partial entirely once a
-   company's listing_date has passed (see _already_listed()) -- all of
-   ipogyani's data (price band, GMP, subscription total, subscription
+4. fetch_and_upsert() now skips the pre-listing partial entirely once a
+   company's listing_date has passed (see _already_listed()) -- this
+   source's data (price band, GMP, subscription total, subscription
    category breakdown, issue_category) is pre-listing by design (see
    module docstring above), so it should freeze at whatever it was when
    the company listed rather than keep getting re-fetched by
    sync_recent_listings()'s daily post-listing price_dayN passes.
+
+--- FIX LOG (2026-08-15) ---
+5. ipogyani.com is no longer used anywhere in this project -- pre-listing
+   data now comes from ipoji.com instead (project decision). This also
+   fixes a real bug: the old _ipogyani_partial() re-scraped ipogyani's
+   full /live-ipo page from the network on EVERY call, and
+   scheduler.sync_active_ipos() called fetch_and_upsert() once per active
+   company -- ~13 identical page fetches per sync run for ~12 active
+   IPOs. The new _ipoji_partial()/_ipoji_partial_from_row() never hit the
+   network at all: they read the ipo_live_tracker table, which
+   scheduler.sync_ipoji_open_ipos() already scrapes and populates once
+   per sync run (see that function and scheduler.py's reordered
+   run_sync_once()). fetch_and_upsert() also now accepts an optional
+   `ipoji_row` so sync_active_ipos()'s loop can hand back the row it
+   already has on hand, skipping even the DB lookup.
 """
 
 import datetime
@@ -52,7 +70,6 @@ import logging
 
 from . import db
 from .fetchers import indianapi
-from .gmp_sync import _ipogyani_fetch_live_status
 
 logger = logging.getLogger("ipo_tool.live_fetch")
 
@@ -70,57 +87,66 @@ def _merge(existing: dict, *partials: dict) -> dict:
     return merged
 
 
-def _ipogyani_partial(company_name: str) -> dict:
-    """Replaces the old IPO Guru pre-listing fetch. Pulls from ipogyani's
-    /live-ipo page (via gmp_sync._ipogyani_fetch_live_status()), which
-    covers open/awaiting-allotment/upcoming issues with real dates,
-    subscription, and category -- not just GMP. Returns {} for anything
-    not currently on that page, or on any request failure -- callers treat
-    an empty dict the same as a source that simply had nothing to say."""
-    try:
-        live = _ipogyani_fetch_live_status()
-    except Exception as e:
-        logger.warning("ipogyani live-status fetch failed for %r: %s", company_name, e)
-        return {}
+def _ipoji_partial_from_row(row: dict) -> dict:
+    """Maps one ipo_live_tracker row onto the ipo_master_records field
+    names fetch_and_upsert() merges in. No network call here -- that row
+    was already scraped and saved by sync_ipoji_open_ipos() /
+    ipoji.poll_and_save_open_ipos() (see scheduler.py), so this is a pure
+    reshape of data we already have.
 
-    from .gmp_sync import strict_match
-    names = [e["company_name"] for e in live]
-    matched_name = strict_match(company_name, names)
-    if matched_name is None:
-        return {}
-    entry = next(e for e in live if e["company_name"] == matched_name)
-
-    partial = {"company_name": entry["company_name"], "data_source": "ipogyani"}
-    field_map = {
-        "price_band_high": "price_band_upper",
-        "gmp_percent": "gmp_percent",
-        "open_date": "open_date",
-        "close_date": "close_date",
-        "allotment_date": "allotment_date",
-        "listing_date": "listing_date",
-        "subscription_total": "subscription_total",
-        "category": "issue_category",
+    NOTE: ipo_live_tracker does not currently store allotment_date or
+    listing_date -- ipoji.py's upsert_live_tracker() doesn't take those
+    params, even though ipoji.parse_details_page() does parse them off
+    the page. Left unset here rather than guessed; if these are needed,
+    ipo_live_tracker's schema and upsert_live_tracker() need to be
+    extended first to actually persist them."""
+    return {
+        "company_name": row.get("company_name"),
+        "data_source": "ipoji",
+        "price_band_upper": row.get("price_band_upper"),
+        "gmp_percent": row.get("current_gmp_percent"),
+        "open_date": row.get("open_date"),
+        "close_date": row.get("close_date"),
+        "subscription_total": row.get("current_subscription_total"),
+        "subscription_qib": row.get("current_subscription_qib"),
+        "subscription_hni": row.get("current_subscription_hni"),
+        "subscription_rii": row.get("current_subscription_rii"),
+        "issue_category": row.get("issue_category"),
     }
-    for src_key, dest_key in field_map.items():
-        if entry.get(src_key) is not None:
-            partial[dest_key] = entry[src_key]
 
-    # FIX (2026-08-12): subscription_qib/subscription_hni/subscription_rii
-    # were declared in schemas.py but never actually fetched by anything --
-    # see gmp_sync._ipogyani_fetch_subscription_categories()'s docstring
-    # for the confirmed caveat that this source's category breakdown can
-    # lag subscription_total (set above, from a different ipogyani page)
-    # by some hours. Self-contained/catches its own request errors, so a
-    # failure here never blocks the rest of this partial.
-    from .gmp_sync import _ipogyani_fetch_subscription_categories
-    partial.update(_ipogyani_fetch_subscription_categories(entry["slug"]))
 
-    return partial
+def _ipoji_partial(company_name: str) -> dict:
+    """On-demand path -- used when fetch_and_upsert() is called for a
+    company that wasn't already looked up as part of sync_active_ipos()'s
+    loop (e.g. a user searching for a company we don't have yet), so no
+    ipo_live_tracker row was handed to us directly.
+
+    Looks the company up in ipo_live_tracker by name -- a local DB read,
+    NOT a network fetch. Replaces the old _ipogyani_partial(), which used
+    to hit ipogyani.com directly on every call; ipoji.com is only ever
+    scraped by sync_ipoji_open_ipos()'s hourly poll now (see
+    scheduler.py), and every other caller just reads what that poll
+    already saved. Returns {} if the company isn't currently tracked as
+    open (never appeared on ipoji's open pages, or it closed and was
+    dropped -- see ipoji.remove_from_live_tracker())."""
+    try:
+        conn = db.get_connection()
+    except Exception as e:
+        logger.warning("Could not open DB connection for ipoji lookup of %r: %s", company_name, e)
+        return {}
+    try:
+        cur = conn.execute("SELECT * FROM ipo_live_tracker WHERE company_name = ?", (company_name,))
+        row = cur.fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        return {}
+    return _ipoji_partial_from_row(dict(row))
 
 
 def _already_listed(listing_date: str | None) -> bool:
     """True if `listing_date` is set and is today or earlier -- i.e. the
-    IPO has actually listed, bidding is long closed, and ipogyani's
+    IPO has actually listed, bidding is long closed, and ipoji's
     pre-listing data (price band, GMP, subscription -- see module
     docstring's source split) is no longer meaningful to keep refreshing.
     A future listing_date (still upcoming) or no listing_date at all
@@ -135,10 +161,19 @@ def _already_listed(listing_date: str | None) -> bool:
     return d <= datetime.date.today()
 
 
-def fetch_and_upsert(company_name: str) -> dict:
+def fetch_and_upsert(company_name: str, ipoji_row: dict | None = None) -> dict:
     """Fetches whatever's available for `company_name` from both sources,
     merges it with whatever's already in the DB for that company (if any),
     upserts, and returns the resulting record as a dict.
+
+    `ipoji_row` is an optional already-fetched ipo_live_tracker row (a
+    dict) -- pass it when the caller already has one on hand (see
+    scheduler.py's sync_active_ipos(), which loops over every
+    ipo_live_tracker row and hands each straight back in here) so this
+    function doesn't even need to run its own DB lookup, let alone a
+    network call. When omitted (e.g. the on-demand "search for a company
+    we don't have" path), this falls back to looking the company up in
+    ipo_live_tracker itself via _ipoji_partial() -- still just a DB read.
 
     Raises nothing on a source-level failure -- those are logged and
     skipped so one flaky API doesn't take down the whole refresh. Only
@@ -146,7 +181,7 @@ def fetch_and_upsert(company_name: str) -> dict:
     existing_record, _ = db.find_company(company_name)
     existing = existing_record.model_dump() if existing_record else {"company_name": company_name}
 
-    ipogyani_partial = {}
+    ipoji_partial = {}
     if _already_listed(existing.get("listing_date")):
         # FIX (2026-08-12): once an IPO has actually listed, ipogyani's
         # price-band/GMP/subscription data (price_band_upper, gmp_percent,
@@ -164,14 +199,17 @@ def fetch_and_upsert(company_name: str) -> dict:
         # sync_gmp_trend() pass) -- that's a different, intentionally
         # ongoing mechanism, untouched by this.
         logger.info(
-            "Skipping ipogyani fetch for %r -- already listed on %s, "
+            "Skipping ipoji partial for %r -- already listed on %s, "
             "pre-listing data is frozen.", company_name, existing["listing_date"],
         )
     else:
         try:
-            ipogyani_partial = _ipogyani_partial(company_name)
+            if ipoji_row is not None:
+                ipoji_partial = _ipoji_partial_from_row(ipoji_row)
+            else:
+                ipoji_partial = _ipoji_partial(company_name)
         except Exception as e:  # noqa: BLE001 -- same "don't take down the rest" pattern as before
-            logger.warning("ipogyani fetch failed for %r: %s", company_name, e)
+            logger.warning("ipoji lookup failed for %r: %s", company_name, e)
 
     indianapi_partial = {}
     price_partial = {}
@@ -186,10 +224,10 @@ def fetch_and_upsert(company_name: str) -> dict:
     except indianapi.IndianAPIError as e:
         logger.warning("Indian API fetch failed for %r: %s", company_name, e)
 
-    if not ipogyani_partial and not indianapi_partial and not existing_record:
+    if not ipoji_partial and not indianapi_partial and not existing_record:
         raise LookupError(f"No data found for '{company_name}' from any source, and it isn't in the DB.")
 
-    merged = _merge(existing, ipogyani_partial, indianapi_partial, price_partial)
+    merged = _merge(existing, ipoji_partial, indianapi_partial, price_partial)
     merged["company_name"] = merged.get("company_name") or company_name
     merged["last_updated"] = datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z"
     if merged.get("current_price") is not None:
