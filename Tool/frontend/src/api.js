@@ -7,12 +7,24 @@ class ApiError extends Error {
   }
 }
 
-async function request(path, { method = 'GET' } = {}) {
+async function request(path, { method = 'GET', timeoutMs = 20000 } = {}) {
   let res
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    res = await fetch(`${API_BASE}${path}`, { method })
+    res = await fetch(`${API_BASE}${path}`, { method, signal: controller.signal })
   } catch (err) {
+    if (err.name === 'AbortError') {
+      // Render's free tier spins the backend down when idle -- a cold
+      // start can take 30-50s. Failing fast here (instead of letting the
+      // browser hang indefinitely) means the UI can show a clear "still
+      // waking up, try again" message and re-enable its refresh/retry
+      // button, rather than leaving a spinner stuck forever.
+      throw new ApiError('The API is taking a while to respond (it may be waking up from idle). Please try again in a few seconds.', 0)
+    }
     throw new ApiError('Could not reach the IPO Analyser API. Is the backend running?', 0)
+  } finally {
+    clearTimeout(timer)
   }
   if (!res.ok) {
     let detail = res.statusText
@@ -64,7 +76,7 @@ export function getTrajectorySmart(name, { subscription, gmp } = {}) {
 // its gain/trajectory predictions already computed -- powers the "Live
 // IPOs" tab (no per-company follow-up requests needed).
 export function syncAndPredictAll() {
-  return request('/api/sync_and_predict', { method: 'POST' })
+  return request('/api/sync_and_predict', { method: 'POST', timeoutMs: 60000 })
 }
 
 // Step 8: currently-open-for-bidding IPOs, each with its latest live

@@ -56,6 +56,7 @@ RESOLVED (were flagged assumptions, now confirmed/fixed):
      before the column-remap bug -- fixed below.
 """
 
+import logging
 import re
 import sqlite3
 import time
@@ -66,6 +67,8 @@ from bs4 import BeautifulSoup
 
 from .. import config
 from ..db import get_connection, find_company
+
+logger = logging.getLogger("ipo_tool.ipoji")
 
 # ---------------------------------------------------------------------------
 # Section 1 — fetch/parse (moved from ipoji_common.py, logic unchanged)
@@ -578,6 +581,7 @@ def poll_and_save_open_ipos() -> dict:
     }
 
     open_slugs = discover_open_slugs()
+    logger.warning("discover_open_slugs found: %r", open_slugs)
     summary["open_slugs_found"] = len(open_slugs)
 
     conn = get_connection()
