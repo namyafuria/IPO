@@ -9,3 +9,4 @@ beautifulsoup4==4.12.3
 APScheduler==3.10.4
 python-dotenv==1.0.1
 pandas-market-calendars==5.4.0
+lxml>=4.9
