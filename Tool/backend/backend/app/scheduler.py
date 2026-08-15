@@ -25,7 +25,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from . import config, db, live_fetch
 from .gmp_sync import run_gmp_sync, _ipogyani_fetch_live_status
-from .services import ipoji
+from .fetchers import ipoji
 
 logger = logging.getLogger("ipo_tool.scheduler")
 
