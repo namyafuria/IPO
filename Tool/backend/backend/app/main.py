@@ -2,7 +2,7 @@ import logging
 import sqlite3
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import config, live_fetch
@@ -243,14 +243,22 @@ def trigger_gmp_sync(sources: Optional[str] = "ipogyani,ipowatch", ipowatch_limi
 
 
 @app.post("/api/sync")
-def trigger_sync():
+def trigger_sync(background_tasks: BackgroundTasks):
     """Manually kick the same sync the background scheduler runs -- this is
     the endpoint an external cron (Vercel Cron / GitHub Actions / etc.)
     should call on a serverless deployment, since a serverless function
-    can't run its own persistent background loop. See scheduler.py."""
+    can't run its own persistent background loop. See scheduler.py.
+
+    FIX (2026-08-15): run_sync_once() now runs as a background task rather
+    than being awaited here -- it includes sync_ipoji_open_ipos(), which
+    does 3 page-fetches x a 1.5s+ delay per currently-open IPO (~40
+    companies -> 100+ sequential requests, 3+ minutes). Blocking this
+    request on that made every caller (including an external cron with
+    its own timeout) wait for the full run. Same reasoning as
+    /api/sync_and_predict's step 1 above."""
     from .scheduler import run_sync_once
-    run_sync_once()
-    return {"status": "sync complete"}
+    background_tasks.add_task(run_sync_once)
+    return {"status": "sync triggered (running in background)"}
 
 
 # ---------------------------------------------------------------------------
@@ -270,6 +278,7 @@ def trigger_sync():
 # ---------------------------------------------------------------------------
 @app.post("/api/sync_and_predict")
 def sync_and_predict(
+    background_tasks: BackgroundTasks,
     sources: Optional[str] = "ipogyani",
     track_days: Optional[int] = None,
     include_trajectory: bool = True,
@@ -280,26 +289,29 @@ def sync_and_predict(
     cron job) should call, rather than /api/sync/gmp alone.
 
     Steps, in order:
-      1. sync_ipoji_open_ipos() -- FIX (2026-08-15): this step was
-         missing entirely, and its absence is why IPOs stopped appearing
-         after the ipogyani->ipoji swap. sync_active_ipos() (step 2, just
-         below) reads ipo_live_tracker rather than fetching anything
-         itself now (see scheduler.py/live_fetch.py) -- but this route
-         used to call sync_active_ipos() completely on its own, with
-         nothing populating ipo_live_tracker first. That table is ONLY
-         ever written by sync_ipoji_open_ipos() (the ipoji.com poll), so
-         without this call, step 2 always found an empty/stale table,
-         logged its "nothing to do" warning, and silently skipped
-         discovering or writing any companies -- explaining why neither
-         frontend section showed anything after a refresh, even though
-         the endpoint returned 200. scheduler.run_sync_once() already
-         got this same reordering; this route needed it independently
-         since it calls sync_active_ipos() directly rather than going
-         through run_sync_once().
-      2. sync_active_ipos() -- reads the now-fresh ipo_live_tracker and
-         writes open_date/close_date/subscription_total/issue_category/etc.
-         into ipo_master_records, which is what find_live_and_recent_
-         companies() below actually filters on.
+      1. sync_ipoji_open_ipos() is kicked off as a BACKGROUND task -- FIX
+         (2026-08-15): this used to run synchronously, first thing, in
+         this same request. That's 3 page-fetches x a 1.5s+ delay PER
+         OPEN IPO (see ipoji.py's fetch_and_parse_ipo()/DELAY_SECONDS) --
+         with ~40 companies currently open, that's 100+ sequential
+         requests and 3+ minutes of blocking work on every single
+         refresh click, which blows straight through the frontend's
+         request timeout ("API is taking a while to respond..."). It's
+         now fire-and-forget: this request returns using whatever
+         ipo_live_tracker already has (from the last successful poll --
+         either the hourly background job, if RUN_SCHEDULER=1, or a
+         previous call to this same route), while the fresh scrape runs
+         after the response is sent and will be picked up by the NEXT
+         refresh. ipoji.py's per-company commit (see
+         poll_and_save_open_ipos()'s own fix-log note) means a slow or
+         interrupted background poll still leaves each company's data
+         usable as it completes, rather than all-or-nothing.
+      2. sync_active_ipos() -- reads the (possibly still-being-updated)
+         ipo_live_tracker synchronously; this is just a DB read plus one
+         Indian-API call per company, not a scrape, so it stays in the
+         request path. Writes open_date/close_date/subscription_total/
+         issue_category/etc. into ipo_master_records, which is what
+         find_live_and_recent_companies() below actually filters on.
       3. run_gmp_sync(sources) -- refreshes gmp_trend and, via the fixed
          backfill step, ipo_master_records.gmp_percent (see gmp_sync.py).
       4. Finds every company currently open for bidding, or listed within
@@ -319,13 +331,16 @@ def sync_and_predict(
     Returns: {"sync": <run_gmp_sync result>, "predictions": [ {company_name,
     gain, trajectory, error}, ... ]}. A per-company `error` field (instead
     of raising) means that one company's prediction failed -- the rest of
-    the batch still returns.
+    the batch still returns. Note the response no longer waits on the
+    ipoji poll (see step 1) -- if ipo_live_tracker was still empty/stale
+    going into this call, `predictions` may be thin on this call and
+    fuller on the next one, once the background poll has landed.
     """
     # Local import -- keeps scheduler.py (and its apscheduler dependency)
     # lazy-loaded, same pattern as /api/sync below, rather than a hard
     # module-level import that every request to this file would then need.
     from .scheduler import sync_ipoji_open_ipos, sync_active_ipos
-    sync_ipoji_open_ipos()
+    background_tasks.add_task(sync_ipoji_open_ipos)
     sync_active_ipos()
     src_tuple = tuple(s.strip() for s in sources.split(",") if s.strip())
     sync_result = run_gmp_sync(sources=src_tuple)
