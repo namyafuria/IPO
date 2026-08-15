@@ -667,7 +667,13 @@ def sync_ipowatch(conn, limit=None):
 # combined entry point
 # ---------------------------------------------------------------------------
 def run_gmp_sync(sources=("ipogyani", "ipowatch"), ipowatch_limit=None):
-    conn = sqlite3.connect(config.DB_PATH)
+    # timeout=30 + WAL: this runs from the scheduler AND from a manual
+    # POST /api/sync/gmp hit, both against the same file every other
+    # module writes to -- without this, a request arriving mid-sync gets
+    # "database is locked" instead of just waiting the sync out. See
+    # routers_live.py's _get_conn() for the same fix on the read side.
+    conn = sqlite3.connect(config.DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
     results = []
     errors = []
     if "ipogyani" in sources:

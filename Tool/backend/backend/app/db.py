@@ -59,7 +59,16 @@ def normalize_name(name: str) -> str:
 
 
 def get_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    # timeout=30 + WAL: this is the busiest connection path in the project
+    # (every /api/company, /api/predict*, and upsert_record call goes
+    # through here) and it runs concurrently with the scheduler's own
+    # writes -- without this, any request landing mid-sync gets
+    # "database is locked" instead of waiting the brief contention out.
+    # See routers_live.py's _get_conn() and gmp_sync.py's run_gmp_sync()
+    # for the same fix applied to the other two places that open
+    # connections against this file.
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.row_factory = sqlite3.Row
     return conn
 

@@ -73,7 +73,16 @@ def _trading_days_elapsed(listing_date_str: str, as_of: Optional[date] = None) -
 
 
 def _get_conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(config.DB_PATH)
+    # timeout=30: wait up to 30s for a lock to clear instead of raising
+    # "database is locked" immediately -- the scheduler and every API
+    # request open separate connections against the same file, so brief
+    # contention during a scheduler write is expected and should be
+    # waited out, not surfaced as a failure. WAL mode lets reads proceed
+    # concurrently with a writer (only writer-vs-writer still blocks),
+    # which is the actual fix for read endpoints like these stalling
+    # behind scheduler writes.
+    conn = sqlite3.connect(config.DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.row_factory = sqlite3.Row
     return conn
 
