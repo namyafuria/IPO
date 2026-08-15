@@ -280,30 +280,41 @@ def sync_and_predict(
     cron job) should call, rather than /api/sync/gmp alone.
 
     Steps, in order:
-      1. sync_active_ipos() -- FIX (2026-08-12): this step was missing
-         entirely. Without it, this route only ever refreshed gmp_trend
-         values for companies already sitting in ipo_master_records; it
-         never discovered newly-live companies or wrote their
-         open_date/close_date/allotment_date/listing_date/subscription_total
-         (see gmp_sync.py's _ipogyani_fetch_live_status()), which is what
-         find_live_and_recent_companies() below actually filters on. That's
-         why hitting this endpoint repeatedly kept returning the same
-         stale set with unchanged GMP -- the discovery/date-writing pass
-         was wired into scheduler.py's own sync path (POST /api/sync) but
-         never called from here, and the frontend's refresh button calls
-         this route, not that one.
-      2. run_gmp_sync(sources) -- refreshes gmp_trend and, via the fixed
+      1. sync_ipoji_open_ipos() -- FIX (2026-08-15): this step was
+         missing entirely, and its absence is why IPOs stopped appearing
+         after the ipogyani->ipoji swap. sync_active_ipos() (step 2, just
+         below) reads ipo_live_tracker rather than fetching anything
+         itself now (see scheduler.py/live_fetch.py) -- but this route
+         used to call sync_active_ipos() completely on its own, with
+         nothing populating ipo_live_tracker first. That table is ONLY
+         ever written by sync_ipoji_open_ipos() (the ipoji.com poll), so
+         without this call, step 2 always found an empty/stale table,
+         logged its "nothing to do" warning, and silently skipped
+         discovering or writing any companies -- explaining why neither
+         frontend section showed anything after a refresh, even though
+         the endpoint returned 200. scheduler.run_sync_once() already
+         got this same reordering; this route needed it independently
+         since it calls sync_active_ipos() directly rather than going
+         through run_sync_once().
+      2. sync_active_ipos() -- reads the now-fresh ipo_live_tracker and
+         writes open_date/close_date/subscription_total/issue_category/etc.
+         into ipo_master_records, which is what find_live_and_recent_
+         companies() below actually filters on.
+      3. run_gmp_sync(sources) -- refreshes gmp_trend and, via the fixed
          backfill step, ipo_master_records.gmp_percent (see gmp_sync.py).
-      3. Finds every company currently open for bidding, or listed within
+      4. Finds every company currently open for bidding, or listed within
          the last `track_days` days (defaults to config.POST_LISTING_TRACK_DAYS).
-      4. Calls predict_for_company() and, if include_trajectory, also
+      5. Calls predict_for_company() and, if include_trajectory, also
          predict_trajectory_for_company() for each -- with NO
          subscription/gmp override, so both read whatever the sync step
          just wrote into the DB.
 
-    `sources`: same comma-separated ipogyani/ipowatch list as /api/sync/gmp.
-    Defaults to ipogyani only here (ipowatch is slow -- see that route's
-    docstring -- so it's opt-in for this combined call rather than default).
+    `sources`: same comma-separated ipogyani/ipowatch list as /api/sync/gmp
+    -- this only controls run_gmp_sync's gmp_trend refresh (step 3); it has
+    no effect on step 1/2, which are always ipoji now regardless of this
+    param. Defaults to ipogyani only here (ipowatch is slow -- see that
+    route's docstring -- so it's opt-in for this combined call rather than
+    default).
 
     Returns: {"sync": <run_gmp_sync result>, "predictions": [ {company_name,
     gain, trajectory, error}, ... ]}. A per-company `error` field (instead
@@ -313,7 +324,8 @@ def sync_and_predict(
     # Local import -- keeps scheduler.py (and its apscheduler dependency)
     # lazy-loaded, same pattern as /api/sync below, rather than a hard
     # module-level import that every request to this file would then need.
-    from .scheduler import sync_active_ipos
+    from .scheduler import sync_ipoji_open_ipos, sync_active_ipos
+    sync_ipoji_open_ipos()
     sync_active_ipos()
     src_tuple = tuple(s.strip() for s in sources.split(",") if s.strip())
     sync_result = run_gmp_sync(sources=src_tuple)
