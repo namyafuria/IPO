@@ -33,7 +33,7 @@ below need adjusting.
 
 import json
 import sqlite3
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 import pandas_market_calendars as mcal
@@ -51,25 +51,70 @@ router = APIRouter()
 _NSE = mcal.get_calendar("NSE")
 
 
-def _trading_days_elapsed(listing_date_str: str, as_of: Optional[date] = None) -> Optional[int]:
-    """Counts NSE trading sessions from (and including) listing_date through
-    (and including) as_of. Returns 1 on listing day itself, matching the
-    project's existing price_day1 = listing-day-close convention (so this
-    number lines up directly with the price_dayN / horizon columns).
-    Returns None if listing_date is missing/unparseable, or 0 if the
-    listing date is still in the future (shouldn't normally happen here
-    since this only gets called on already-listed rows)."""
-    if not listing_date_str:
-        return None
-    try:
-        listing_dt = datetime.strptime(listing_date_str[:10], "%Y-%m-%d").date()
-    except ValueError:
-        return None
+def _trading_days_elapsed_batch(listing_dates: list[str], as_of: Optional[date] = None) -> dict[str, Optional[int]]:
+    """Same semantics as the old per-call _trading_days_elapsed(), but
+    computes the NSE session calendar ONCE for the whole batch instead of
+    once per company.
+
+    FIX (2026-08-16): the old version called _NSE.valid_days() separately
+    for every row with a listing_date -- each call rebuilds a trading-day
+    schedule from scratch, and with hundreds of listed rows in
+    ipo_master_records this made GET /ipos/listed slow enough to time out
+    on Render's free-tier CPU (confirmed in production). Since every
+    company's window is just [listing_date, as_of] and as_of is the same
+    for all of them, one call covering [earliest listing_date, as_of]
+    gives every session anyone could need -- then each company's count is
+    just how many of those sessions fall on/after its own listing_date, a
+    cheap comparison against an already-computed list instead of a fresh
+    schedule build.
+
+    Returns {listing_date_str: elapsed_or_None}, keyed by the ORIGINAL
+    (unparsed) date string passed in, so callers can look up each row's
+    result without re-parsing dates themselves. A given input string that
+    fails to parse maps to None."""
     as_of = as_of or date.today()
-    if listing_dt > as_of:
-        return 0
-    sessions = _NSE.valid_days(start_date=listing_dt, end_date=as_of)
-    return len(sessions)
+    parsed: dict[str, Optional[date]] = {}
+    valid_dts = []
+    for s in listing_dates:
+        if s in parsed:
+            continue
+        try:
+            d = datetime.strptime(s[:10], "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            parsed[s] = None
+            continue
+        parsed[s] = d
+        if d <= as_of:
+            valid_dts.append(d)
+
+    if not valid_dts:
+        return {s: None for s in listing_dates}
+
+    earliest = min(valid_dts)
+    sessions = _NSE.valid_days(start_date=earliest, end_date=as_of)
+    # valid_days returns a DatetimeIndex (tz-aware) -- convert once to a
+    # sorted list of plain dates so per-company counting below is cheap
+    # date comparisons, not repeated calendar/timezone handling.
+    session_dates = sorted(ts.date() for ts in sessions)
+
+    out: dict[str, Optional[int]] = {}
+    for s, d in parsed.items():
+        if d is None:
+            out[s] = None
+        elif d > as_of:
+            out[s] = 0
+        else:
+            # Count sessions on/after this company's own listing date --
+            # same "inclusive of listing day" convention as before.
+            out[s] = sum(1 for sd in session_dates if sd >= d)
+    return out
+
+
+def _trading_days_elapsed(listing_date_str: str, as_of: Optional[date] = None) -> Optional[int]:
+    """Single-company convenience wrapper around _trading_days_elapsed_batch()
+    -- kept for any other caller that only needs one date at a time (not
+    used by get_listed_ipos() below anymore, which batches directly)."""
+    return _trading_days_elapsed_batch([listing_date_str], as_of=as_of)[listing_date_str]
 
 
 def _get_conn() -> sqlite3.Connection:
@@ -219,21 +264,37 @@ def get_listed_ipos():
     of duplicating that logic here.
 
     "Day 10" is counted in real NSE trading sessions (see
-    _trading_days_elapsed), not calendar days -- a company that listed
-    last Friday is still on trading-day 2 by Monday, not day 4.
+    _trading_days_elapsed_batch), not calendar days -- a company that
+    listed last Friday is still on trading-day 2 by Monday, not day 4.
+
+    FIX (2026-08-16): two changes to fix this route timing out on Render's
+    free tier once ipo_master_records had hundreds of listed rows:
+      1. SQL pre-filter on listing_date >= (today - 20 calendar days).
+         10 NSE trading sessions is at most ~14 calendar days even across
+         a long weekend/holiday cluster, so 20 is a safe, generous margin
+         that still cuts out the vast majority of the table (companies
+         listed months/years ago) before any Python or calendar work
+         happens -- those can never be inside the Day1-10 window anyway.
+      2. Trading-day counts for the remaining (small) candidate set are
+         now computed in one batched calendar call instead of one call
+         per row -- see _trading_days_elapsed_batch()'s docstring.
     """
+    cutoff = (date.today() - timedelta(days=20)).isoformat()
     conn = _get_conn()
     try:
         rows = conn.execute(
             """SELECT company_name, listing_date, issue_category, sector,
                       subscription_total, gmp_percent
                FROM ipo_master_records
-               WHERE listing_date IS NOT NULL AND listing_date != ''"""
+               WHERE listing_date IS NOT NULL AND listing_date != '' AND listing_date >= ?""",
+            (cutoff,),
         ).fetchall()
+
+        elapsed_by_date = _trading_days_elapsed_batch([r["listing_date"] for r in rows])
 
         out = []
         for r in rows:
-            elapsed = _trading_days_elapsed(r["listing_date"])
+            elapsed = elapsed_by_date.get(r["listing_date"])
             if elapsed is None or elapsed < 1 or elapsed >= 10:
                 continue
             out.append({

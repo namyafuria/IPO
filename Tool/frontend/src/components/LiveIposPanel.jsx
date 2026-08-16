@@ -1,83 +1,56 @@
 import { useState } from 'react'
-import LiveIpoCard from './LiveIpoCard'
-import ErrorPanel from './ErrorPanel'
-import { syncAndPredictAll, ApiError } from '../api'
+import OpenIposPanel from './OpenIposPanel'
+import ListedIposPanel from './ListedIposPanel'
 
+// Live IPOs = everything currently relevant right now, split into two
+// sub-views that each read from their own already-fast, DB-backed
+// endpoint (see routers_live.py):
+//   - Open: GET /ipos/open -- rows in ipo_live_tracker, kept fresh by the
+//     backend's own hourly poller. No live network call happens on click.
+//   - Listed: GET /ipos/listed -- companies still inside their Day1-10
+//     trajectory window, counted in real NSE trading sessions (not
+//     calendar days), so the "proper criteria" for which companies
+//     qualify is enforced server-side, not duplicated here.
+//
+// REPLACES the old version of this component, which called
+// POST /api/sync_and_predict directly -- that endpoint synchronously
+// loops predict_for_company()/predict_trajectory_for_company() over every
+// tracked company (55+) in one request, routinely exceeding the 20-60s
+// client timeout and showing a misleading "waking up from idle" message
+// even when the backend was working correctly. Open/Listed above never
+// had that problem -- they were already fast when tested directly.
 export default function LiveIposPanel() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [predictions, setPredictions] = useState(null)
-  const [hasRun, setHasRun] = useState(false)
-
-  async function handleClick() {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await syncAndPredictAll()
-      setPredictions(data.predictions ?? [])
-      setHasRun(true)
-    } catch (err) {
-      setPredictions(null)
-      setError(err instanceof ApiError ? err.message : 'Something went wrong.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [subView, setSubView] = useState('open') // 'open' | 'listed'
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-3">
+    <div>
+      <div className="mb-6 flex items-center gap-1 border-b border-border">
         <button
           type="button"
-          onClick={handleClick}
-          disabled={loading}
-          className="rounded-md border border-amber-dim bg-panel-raised px-4 py-2.5 font-mono text-xs uppercase tracking-wider text-amber transition-colors hover:bg-amber hover:text-bg disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={() => setSubView('open')}
+          className={`px-3 py-2 font-mono text-xs uppercase tracking-wider transition-colors ${
+            subView === 'open'
+              ? 'border-b-2 border-amber text-amber'
+              : 'border-b-2 border-transparent text-muted hover:text-ink'
+          }`}
         >
-          {loading ? 'Fetching live data…' : '⟳ Refresh Live IPOs'}
+          Open
         </button>
-        {hasRun && !loading && predictions && (
-          <span className="font-mono text-xs text-faint">
-            {predictions.length} compan{predictions.length === 1 ? 'y' : 'ies'} currently open or recently listed
-          </span>
-        )}
+        <button
+          type="button"
+          onClick={() => setSubView('listed')}
+          className={`px-3 py-2 font-mono text-xs uppercase tracking-wider transition-colors ${
+            subView === 'listed'
+              ? 'border-b-2 border-amber text-amber'
+              : 'border-b-2 border-transparent text-muted hover:text-ink'
+          }`}
+        >
+          Listed
+        </button>
       </div>
 
-      {loading && (
-        <div className="flex flex-col gap-5">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-lg border border-border bg-panel p-5 sm:p-6">
-              <div className="h-4 w-1/3 animate-pulse rounded bg-panel-raised" />
-              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, j) => (
-                  <div key={j} className="h-8 animate-pulse rounded bg-panel-raised" />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!loading && error && <ErrorPanel message={error} />}
-
-      {!loading && !error && hasRun && predictions && predictions.length === 0 && (
-        <p className="font-mono text-xs text-faint">
-          No currently open or recently-listed IPOs found.
-        </p>
-      )}
-
-      {!loading && !error && predictions && predictions.length > 0 && (
-        <div className="flex flex-col gap-5">
-          {predictions.map((entry) => (
-            <LiveIpoCard key={entry.company_name} entry={entry} />
-          ))}
-        </div>
-      )}
-
-      {!loading && !error && !hasRun && (
-        <p className="font-mono text-xs text-faint">
-          Click refresh to fetch live GMP data and predictions for every currently open or recently-listed IPO.
-        </p>
-      )}
+      {subView === 'open' && <OpenIposPanel />}
+      {subView === 'listed' && <ListedIposPanel />}
     </div>
   )
 }
