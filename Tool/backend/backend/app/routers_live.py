@@ -93,12 +93,34 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
 
 @router.get("/ipos/open")
 def get_open_ipos():
-    """Every row in ipo_live_tracker, each with its latest live_predictions
-    row attached (None if no prediction has been made for it yet -- e.g.
-    subscription data hasn't come in on day 1 of bidding)."""
+    """Every row in ipo_live_tracker that's still genuinely open for
+    bidding, each with its latest live_predictions row attached (None if
+    no prediction has been made for it yet -- e.g. subscription data
+    hasn't come in on day 1 of bidding).
+
+    FIX (2026-08-16): ipo_live_tracker previously included companies whose
+    close_date had already passed -- ipoji.py's upsert_live_tracker()
+    hardcodes status='open' for every company discovered on ipoji.com's
+    "current-ipo" pages, which cover the WHOLE pre-listing lifecycle
+    (actively bidding, closed-awaiting-allotment, upcoming), not just
+    companies actually taking bids right now. The pruning step (removing a
+    company once it drops off ipoji's current-ipo pages entirely) was
+    already working correctly -- this is a separate gap: a company that's
+    closed but not yet listed still legitimately appears on those pages,
+    so it never gets pruned, yet showing it as "open for bidding" was
+    misleading. Filtered here (read-time) rather than in the scraper, so
+    the raw ipo_live_tracker data -- including close_date -- stays
+    available for other consumers that might want the full pre-listing
+    set, not just the actively-open subset this endpoint is named for."""
+    today = date.today().isoformat()
     conn = _get_conn()
     try:
-        trackers = conn.execute("SELECT * FROM ipo_live_tracker ORDER BY as_of DESC").fetchall()
+        trackers = conn.execute(
+            """SELECT * FROM ipo_live_tracker
+               WHERE close_date IS NULL OR close_date = '' OR close_date >= ?
+               ORDER BY as_of DESC""",
+            (today,),
+        ).fetchall()
 
         out = []
         for t in trackers:
