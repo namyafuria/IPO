@@ -53,28 +53,39 @@ if str(MODEL_DIR) not in sys.path:
 from ipo_model_utils import SectorTargetEncoder  # noqa: F401,E402 -- required for unpickling
 from gmp_trend_features import compute_features_for_company  # noqa: E402
 
-MAINBOARD_MODEL_PATH = MODEL_DIR / "mainboard_bucket_model_v13.pkl"
-MAINBOARD_GMP_MODEL_PATH = MODEL_DIR / "mainboard_bucket_model_v13_gmp.pkl"
-MAINBOARD_V14_GMP_MODEL_PATH = MODEL_DIR / "mainboard_bucket_model_v14_gmp.pkl"
-SME_MODEL_PATH = MODEL_DIR / "sme_bucket_model_v7.pkl"
-SME_GMP_MODEL_PATH = MODEL_DIR / "sme_bucket_model_v7_gmp.pkl"
-SME_V14_GMP_MODEL_PATH = MODEL_DIR / "sme_bucket_model_v14_gmp.pkl"
+# FIX (2026-08-16): the .pkl files are NOT guaranteed to sit in the same
+# folder as this file. Confirmed in production: live_predict.py deployed at
+# .../backend/backend/app/live_predict.py, but the .pkl files actually live
+# at .../backend/backend/ -- one level up, outside the app/ package (same
+# split ipoji.py's own import-fallback comment already anticipated for this
+# module's import, just not for its model files). Rather than hardcode one
+# assumption, search this file's own folder AND its parent, in that order,
+# and use whichever actually has the file. Works unmodified whether this
+# file ends up deployed inside app/ or at the backend root.
+_CANDIDATE_DIRS = [MODEL_DIR, MODEL_DIR.parent]
 
 
-def _load(path: Path):
-    try:
-        with open(path, "rb") as f:
-            return pickle.load(f)
-    except FileNotFoundError:
-        return None
+def _load(filename: str):
+    for d in _CANDIDATE_DIRS:
+        path = d / filename
+        try:
+            with open(path, "rb") as f:
+                return pickle.load(f)
+        except FileNotFoundError:
+            continue
+    return None
 
 
-_mb_model = _load(MAINBOARD_MODEL_PATH)
-_mb_gmp_model = _load(MAINBOARD_GMP_MODEL_PATH)
-_mb_v14_gmp_model = _load(MAINBOARD_V14_GMP_MODEL_PATH)
-_sme_model = _load(SME_MODEL_PATH)
-_sme_gmp_model = _load(SME_GMP_MODEL_PATH)
-_sme_v14_gmp_model = _load(SME_V14_GMP_MODEL_PATH)
+def _resolved_search_dirs() -> str:
+    return " or ".join(str(d) for d in _CANDIDATE_DIRS)
+
+
+_mb_model = _load("mainboard_bucket_model_v13.pkl")
+_mb_gmp_model = _load("mainboard_bucket_model_v13_gmp.pkl")
+_mb_v14_gmp_model = _load("mainboard_bucket_model_v14_gmp.pkl")
+_sme_model = _load("sme_bucket_model_v7.pkl")
+_sme_gmp_model = _load("sme_bucket_model_v7_gmp.pkl")
+_sme_v14_gmp_model = _load("sme_bucket_model_v14_gmp.pkl")
 
 
 class PredictionError(Exception):
@@ -229,7 +240,9 @@ def predict_live_for_company(conn: sqlite3.Connection, company_name: str, persis
         missing_name = "sme_bucket_model_v14_gmp.pkl / v7_gmp.pkl / v7.pkl"
 
     if model_pkg is None:
-        raise PredictionError(f"No usable model file found ({missing_name}) -- none present in {MODEL_DIR}.")
+        raise PredictionError(
+            f"No usable model file found ({missing_name}) -- none present in {_resolved_search_dirs()}."
+        )
 
     result = _run_model(model_pkg, values)
 

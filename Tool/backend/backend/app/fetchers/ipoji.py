@@ -640,6 +640,7 @@ def poll_and_save_open_ipos() -> dict:
         "companies_saved": [],
         "unresolved_company_names": [],  # slug-derived names with no DB match -- flag for review
         "fetch_errors": [],
+        "skipped_no_data": [],  # slugs with zero usable fields -- see FIX (2026-08-16) below
     }
 
     open_slugs = discover_open_slugs()  # {slug: issue_category}
@@ -662,6 +663,36 @@ def poll_and_save_open_ipos() -> dict:
             listing_date_iso = _to_iso_date(details.get("listing_date"))
             allotment_date_iso = _to_iso_date(details.get("allotment_date"))
             ipo_price = _parse_price_band_upper(details.get("price_band"))
+
+            # FIX (2026-08-16): skip slugs whose detail page gave us nothing
+            # usable at all -- confirmed in production: several slugs
+            # discovered on ipoji's current-ipo pages (e.g. large, clearly
+            # already-listed names like "Boat", "Capital Small Finance Bank
+            # Limited") came back with every single field null (no
+            # open_date, close_date, listing_date, price band, or any
+            # bidding-day subscription row) -- almost certainly slugs picked
+            # up from a "popular/related IPOs" widget elsewhere on the page
+            # rather than the actual current-listings table, or a detail
+            # page whose layout this parser doesn't match. Either way, a
+            # row with zero real fields is never useful in /ipos/open and
+            # was the direct cause of unrelated/wrong companies showing up
+            # there. Requires at least ONE of: open_date, close_date,
+            # listing_date, price band, or a real bidding-day subscription
+            # row -- genuinely-open IPOs always have at least one of these
+            # even early on day 1.
+            has_bidding_row = any(r.get("is_bidding_day") for r in result["subscription"])
+            has_any_signal = bool(
+                details.get("open_date") or details.get("close_date")
+                or details.get("listing_date") or ipo_price or has_bidding_row
+            )
+            if not has_any_signal:
+                summary.setdefault("skipped_no_data", []).append(slug)
+                logger.warning(
+                    "Skipping %r -- detail/subscription pages returned no usable "
+                    "fields at all (fetch_errors=%r); not saving as an open IPO.",
+                    slug, result["fetch_errors"],
+                )
+                continue
 
             # --- gmp_trend: one upsert per day-row from the GMP history table ---
             latest_gmp_pct = None
