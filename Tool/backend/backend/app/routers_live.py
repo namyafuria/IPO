@@ -161,6 +161,8 @@ def _serialize_tracker_row(conn: sqlite3.Connection, t: sqlite3.Row) -> dict:
         "status": t["status"],
         "open_date": t["open_date"],
         "close_date": t["close_date"],
+        "listing_date": t["listing_date"],
+        "allotment_date": t["allotment_date"],
         "price_band_upper": t["price_band_upper"],
         "issue_size_cr": t["issue_size_cr"],
         "current_subscription_total": t["current_subscription_total"],
@@ -197,15 +199,26 @@ def get_open_ipos():
 
     Companies filtered OUT here (close_date already passed, awaiting
     allotment) aren't dropped -- see /ipos/awaiting-allotment below,
-    added 2026-08-16 to cover exactly that gap."""
+    added 2026-08-16 to cover exactly that gap.
+
+    FIX (2026-08-16): also excludes any row with a listing_date already in
+    the past, regardless of close_date. Root cause of already-listed
+    companies showing up here: ipo_live_tracker never stored listing_date
+    until now (see upsert_live_tracker() in ipoji.py), so this filter had
+    no way to catch a company whose close_date was blank/unparsed or
+    whose page ipoji.com itself was slow to move off current-ipo after it
+    actually listed. Rows written before this fix (listing_date still
+    NULL) fall back to the old close_date-only behaviour until the next
+    poll refreshes them."""
     today = date.today().isoformat()
     conn = _get_conn()
     try:
         trackers = conn.execute(
             """SELECT * FROM ipo_live_tracker
-               WHERE close_date IS NULL OR close_date = '' OR close_date >= ?
+               WHERE (close_date IS NULL OR close_date = '' OR close_date >= ?)
+                 AND (listing_date IS NULL OR listing_date = '' OR listing_date > ?)
                ORDER BY as_of DESC""",
-            (today,),
+            (today, today),
         ).fetchall()
         out = [_serialize_tracker_row(conn, t) for t in trackers]
         return {"count": len(out), "ipos": out}
@@ -234,15 +247,21 @@ def get_awaiting_allotment_ipos():
     upcoming) doesn't happen until closer to/around actual listing. If
     that pruning behavior ever changes to drop a company right at
     close_date, this endpoint would need its own persistence instead of
-    reading ipo_live_tracker -- not needed as of this fix."""
+    reading ipo_live_tracker -- not needed as of this fix.
+
+    FIX (2026-08-16): same listing_date guard as /ipos/open, same root
+    cause -- a company can be closed-and-not-yet-pruned AND already
+    listed at the same time if ipoji.com's own page lags, so this must
+    exclude on listing_date too, not just require close_date < today."""
     today = date.today().isoformat()
     conn = _get_conn()
     try:
         trackers = conn.execute(
             """SELECT * FROM ipo_live_tracker
                WHERE close_date IS NOT NULL AND close_date != '' AND close_date < ?
+                 AND (listing_date IS NULL OR listing_date = '' OR listing_date > ?)
                ORDER BY close_date DESC""",
-            (today,),
+            (today, today),
         ).fetchall()
         out = [_serialize_tracker_row(conn, t) for t in trackers]
         return {"count": len(out), "ipos": out}

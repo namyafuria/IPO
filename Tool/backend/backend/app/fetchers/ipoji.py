@@ -537,6 +537,8 @@ def upsert_live_tracker(
     status: str | None = None,
     open_date: str | None = None,
     close_date: str | None = None,
+    listing_date: str | None = None,
+    allotment_date: str | None = None,
     price_band_upper: float | None = None,
     issue_size_cr: float | None = None,
     current_subscription_total: float | None = None,
@@ -548,16 +550,30 @@ def upsert_live_tracker(
 ) -> None:
     """Single row per company, fully overwritten -- matches the table's
     stated design (no history kept here; gmp_trend/subscription_daywise
-    are the history)."""
+    are the history).
+
+    FIX (2026-08-16): now also persists listing_date/allotment_date --
+    parse_details_page() has always parsed these off the page, but this
+    function used to silently drop them (flagged as assumption #1 at the
+    top of this file). Without listing_date stored here, /ipos/open and
+    /ipos/awaiting-allotment (routers_live.py) had no reliable way to tell
+    "closed, awaiting allotment" apart from "already listed" once
+    close_date parsing failed or ipoji's own current-ipo page lagged in
+    dropping a newly-listed company -- the direct cause of already-listed
+    companies still showing up in the Open tab. Requires
+    migration_003_add_listing_date_to_tracker.py to have run first (adds
+    these two nullable columns to ipo_live_tracker)."""
     conn.execute(
         """
         INSERT INTO ipo_live_tracker
             (company_name, issue_category, sector, status, open_date, close_date,
+             listing_date, allotment_date,
              price_band_upper, issue_size_cr, current_subscription_total,
              current_subscription_qib, current_subscription_hni,
              current_subscription_rii, current_gmp_percent, as_of)
         VALUES
             (:company_name, :issue_category, :sector, :status, :open_date, :close_date,
+             :listing_date, :allotment_date,
              :price_band_upper, :issue_size_cr, :current_subscription_total,
              :current_subscription_qib, :current_subscription_hni,
              :current_subscription_rii, :current_gmp_percent, :as_of)
@@ -567,6 +583,8 @@ def upsert_live_tracker(
             status = excluded.status,
             open_date = excluded.open_date,
             close_date = excluded.close_date,
+            listing_date = excluded.listing_date,
+            allotment_date = excluded.allotment_date,
             price_band_upper = excluded.price_band_upper,
             issue_size_cr = excluded.issue_size_cr,
             current_subscription_total = excluded.current_subscription_total,
@@ -583,6 +601,8 @@ def upsert_live_tracker(
             "status": status,
             "open_date": open_date,
             "close_date": close_date,
+            "listing_date": listing_date,
+            "allotment_date": allotment_date,
             "price_band_upper": price_band_upper,
             "issue_size_cr": issue_size_cr,
             "current_subscription_total": current_subscription_total,
@@ -745,6 +765,8 @@ def poll_and_save_open_ipos() -> dict:
                 status="open",
                 open_date=_to_iso_date(details.get("open_date")) or details.get("open_date"),
                 close_date=_to_iso_date(details.get("close_date")) or details.get("close_date"),
+                listing_date=listing_date_iso or details.get("listing_date"),
+                allotment_date=allotment_date_iso or details.get("allotment_date"),
                 price_band_upper=ipo_price,
                 issue_size_cr=_to_float((details.get("issue_size") or "").replace("Cr", "")),
                 current_subscription_total=latest_sub_total,
