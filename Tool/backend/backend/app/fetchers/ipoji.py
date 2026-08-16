@@ -99,7 +99,32 @@ MAX_RETRIES = 3
 
 SLUG_RE = re.compile(r"/ipo/([a-z0-9\-]+-ipo)\b", re.IGNORECASE)
 EXCLUDE_SLUGS = {"current-ipo", "upcoming-ipo", "listed-ipo"}
-CURRENT_PAGES = ["/ipo/current-ipo", "/sme-ipo/current-ipo"]
+CURRENT_PAGES = ["/ipo/current-ipo", "/sme-ipo/current-ipo"]  # kept only as dead-URL history; no longer fetched
+
+# FIX (2026-08-16): /ipo/current-ipo and /sme-ipo/current-ipo now 301-redirect
+# (confirmed via curl -- both return "301 Moved Permanently") into a single
+# consolidated page at /ipo that lists Current + Upcoming + Listed together,
+# toggled client-side. The page IS fully server-rendered though (confirmed via
+# DevTools Network tab -- no data-fetching XHR/fetch calls, just ads/analytics),
+# so a plain GET still gets everything; we just need to read the right markers
+# instead of a blanket link-regex. Each IPO's <article> card carries these data
+# attributes directly (confirmed from saved HTML):
+#   data-agent-href="/ipo/{slug}"
+#   data-ipo-status="current" | "upcoming" | "listed"
+#   data-ipo-board="mainboard" | "sme"
+# "current" already covers live-bidding + allotment-awaited + allotment-out
+# (confirmed: Dhoot Transmission, badge "Allotment Out", has data-ipo-status=
+# "current") -- exactly the open/awaiting-listing scope wanted, stopping short
+# of "listed". Verified count against real page: 16 mainboard + 10 sme = 26
+# current, matching the ~16 mainboard figure expected.
+IPO_LIST_PAGE = "/ipo"
+_CARD_RE = re.compile(
+    r'data-agent-href="(/ipo/[a-z0-9\-]+-ipo)"\s+'
+    r'data-ipo-status="([a-z]+)"\s+'
+    r'data-ipo-board="([a-z]+)"',
+    re.IGNORECASE,
+)
+_BOARD_TO_CATEGORY = {"mainboard": "Mainboard", "sme": "SME"}
 
 
 def fetch(url: str) -> str | None:
@@ -304,26 +329,28 @@ _PAGE_CATEGORY = {
 def discover_open_slugs() -> dict[str, str]:
     """Moved from step4_live_poller_ipoji.py -- what the hourly job polls.
 
-    FIX (2026-08-16): now returns {slug: issue_category} instead of a bare
-    set(str). Category comes from which listing page the slug was found
-    on (this dict is the ONLY reliable source of category ipoji gives us
-    -- see the ipo_type fix in parse_details_page() above for why the
-    per-page text scan was wrong). If a slug somehow appears on both
-    pages, Mainboard wins (dict iteration order below processes Mainboard
-    first and SME would overwrite it otherwise) -- shouldn't happen in
-    practice since ipoji doesn't cross-list, but this keeps behaviour
-    deterministic rather than "whichever page's fetch happened to run
-    last"."""
+    FIX (2026-08-16): CURRENT_PAGES ("/ipo/current-ipo", "/sme-ipo/current-ipo")
+    are dead -- both 301-redirect into a single consolidated "/ipo" page now
+    (ipoji site restructure). That page lists Current + Upcoming + Listed
+    together in one server-rendered document, each <article> card tagged with
+    data-agent-href/data-ipo-status/data-ipo-board (see _CARD_RE above). We
+    fetch that one page and keep only status=="current" cards -- confirmed
+    this already covers live-bidding + allotment-awaited + allotment-out,
+    stopping short of "listed", which is exactly the scope wanted for the
+    Open section. Category comes straight from data-ipo-board per card, so
+    there's no more cross-page ordering/precedence question."""
     slug_category: dict[str, str] = {}
-    for page in CURRENT_PAGES:
-        html = fetch(BASE + page)
-        if not html:
-            print(f"  [open-check] failed to fetch: {page}")
+    html = fetch(BASE + IPO_LIST_PAGE)
+    if not html:
+        print(f"  [open-check] failed to fetch: {IPO_LIST_PAGE}")
+        return slug_category
+    for path, status, board in _CARD_RE.findall(html):
+        if status.lower() != "current":
             continue
-        category = _PAGE_CATEGORY[page]
-        for slug in extract_slugs(html):
-            if slug not in slug_category:
-                slug_category[slug] = category
+        slug = path.rsplit("/", 1)[-1]
+        category = _BOARD_TO_CATEGORY.get(board.lower())
+        if category:
+            slug_category[slug] = category
     return slug_category
 
 
@@ -804,7 +831,18 @@ def poll_and_save_open_ipos() -> dict:
                 current_subscription_qib=latest_sub_qib,
                 current_subscription_hni=latest_sub_hni,
                 current_subscription_rii=latest_sub_rii,
-                current_gmp_percent=latest_gmp_pct or _to_float(details.get("current_gmp")),
+                # FIX (2026-08-16): this used to fall back to
+                # _to_float(details.get("current_gmp")) when latest_gmp_pct was
+                # falsy -- but details["current_gmp"] is scraped from "GMP
+                # Today: ₹XX" on the details page, a RUPEE value, not a
+                # percentage. It was silently landing in a percent-typed
+                # field (and the `or` made a real 0.0% wrongly fall through
+                # too, since 0.0 is falsy). Confirmed as the cause of GMP%
+                # showing rupee-sized numbers in the Open section. No unit
+                # conversion is done here on purpose -- better to leave this
+                # None than guess; the correct percentage already lives in
+                # gmp_trend via est_profit_pct once gmp_daily has today's row.
+                current_gmp_percent=latest_gmp_pct,
                 as_of=summary["polled_at"],
             )
 
