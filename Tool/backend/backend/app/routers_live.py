@@ -136,6 +136,43 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
     return dict(row) if row is not None else None
 
 
+def _serialize_tracker_row(conn: sqlite3.Connection, t: sqlite3.Row) -> dict:
+    """Shared shape for one ipo_live_tracker row + its latest prediction
+    (None if no prediction has been made for it yet). Factored out
+    (2026-08-16) so /ipos/open and the new /ipos/awaiting-allotment don't
+    duplicate this -- both are "rows from ipo_live_tracker", just filtered
+    to a different slice of the pre-listing lifecycle."""
+    company = t["company_name"]
+    latest_pred = conn.execute(
+        """SELECT * FROM live_predictions
+           WHERE company_name = ?
+           ORDER BY predicted_at DESC LIMIT 1""",
+        (company,),
+    ).fetchone()
+
+    pred_dict = _row_to_dict(latest_pred)
+    if pred_dict and pred_dict.get("bucket_probabilities"):
+        pred_dict["bucket_probabilities"] = json.loads(pred_dict["bucket_probabilities"])
+
+    return {
+        "company_name": company,
+        "issue_category": t["issue_category"],
+        "sector": t["sector"],
+        "status": t["status"],
+        "open_date": t["open_date"],
+        "close_date": t["close_date"],
+        "price_band_upper": t["price_band_upper"],
+        "issue_size_cr": t["issue_size_cr"],
+        "current_subscription_total": t["current_subscription_total"],
+        "current_subscription_qib": t["current_subscription_qib"],
+        "current_subscription_hni": t["current_subscription_hni"],
+        "current_subscription_rii": t["current_subscription_rii"],
+        "current_gmp_percent": t["current_gmp_percent"],
+        "as_of": t["as_of"],
+        "latest_prediction": pred_dict,
+    }
+
+
 @router.get("/ipos/open")
 def get_open_ipos():
     """Every row in ipo_live_tracker that's still genuinely open for
@@ -156,7 +193,11 @@ def get_open_ipos():
     misleading. Filtered here (read-time) rather than in the scraper, so
     the raw ipo_live_tracker data -- including close_date -- stays
     available for other consumers that might want the full pre-listing
-    set, not just the actively-open subset this endpoint is named for."""
+    set, not just the actively-open subset this endpoint is named for.
+
+    Companies filtered OUT here (close_date already passed, awaiting
+    allotment) aren't dropped -- see /ipos/awaiting-allotment below,
+    added 2026-08-16 to cover exactly that gap."""
     today = date.today().isoformat()
     conn = _get_conn()
     try:
@@ -166,38 +207,44 @@ def get_open_ipos():
                ORDER BY as_of DESC""",
             (today,),
         ).fetchall()
+        out = [_serialize_tracker_row(conn, t) for t in trackers]
+        return {"count": len(out), "ipos": out}
+    finally:
+        conn.close()
 
-        out = []
-        for t in trackers:
-            company = t["company_name"]
-            latest_pred = conn.execute(
-                """SELECT * FROM live_predictions
-                   WHERE company_name = ?
-                   ORDER BY predicted_at DESC LIMIT 1""",
-                (company,),
-            ).fetchone()
 
-            pred_dict = _row_to_dict(latest_pred)
-            if pred_dict and pred_dict.get("bucket_probabilities"):
-                pred_dict["bucket_probabilities"] = json.loads(pred_dict["bucket_probabilities"])
+@router.get("/ipos/awaiting-allotment")
+def get_awaiting_allotment_ipos():
+    """Added 2026-08-16 to close a gap between /ipos/open and /ipos/listed:
+    a company whose bidding has closed but that hasn't listed yet (waiting
+    on allotment/refund/demat-credit, typically a few business days) has
+    close_date in the past -- so /ipos/open correctly excludes it -- but
+    no listing_date yet -- so /ipos/listed (which requires listing_date)
+    doesn't include it either. It fell into a dead zone where the Live
+    IPOs page showed it nowhere. This just serves the flip side of
+    /ipos/open's filter: same source table, same per-row shape (including
+    latest_prediction, which should normally already be populated by now
+    since final subscription numbers are in), companies with close_date
+    strictly before today.
 
-            out.append({
-                "company_name": company,
-                "issue_category": t["issue_category"],
-                "sector": t["sector"],
-                "status": t["status"],
-                "open_date": t["open_date"],
-                "close_date": t["close_date"],
-                "price_band_upper": t["price_band_upper"],
-                "issue_size_cr": t["issue_size_cr"],
-                "current_subscription_total": t["current_subscription_total"],
-                "current_subscription_qib": t["current_subscription_qib"],
-                "current_subscription_hni": t["current_subscription_hni"],
-                "current_subscription_rii": t["current_subscription_rii"],
-                "current_gmp_percent": t["current_gmp_percent"],
-                "as_of": t["as_of"],
-                "latest_prediction": pred_dict,
-            })
+    Relies on ipo_live_tracker still holding the row at this point --
+    true today, since ipoji.remove_from_live_tracker() only prunes a
+    company once it drops off ipoji's current-ipo pages entirely, which
+    per that scraper's own coverage (open, closed-awaiting-allotment, AND
+    upcoming) doesn't happen until closer to/around actual listing. If
+    that pruning behavior ever changes to drop a company right at
+    close_date, this endpoint would need its own persistence instead of
+    reading ipo_live_tracker -- not needed as of this fix."""
+    today = date.today().isoformat()
+    conn = _get_conn()
+    try:
+        trackers = conn.execute(
+            """SELECT * FROM ipo_live_tracker
+               WHERE close_date IS NOT NULL AND close_date != '' AND close_date < ?
+               ORDER BY close_date DESC""",
+            (today,),
+        ).fetchall()
+        out = [_serialize_tracker_row(conn, t) for t in trackers]
         return {"count": len(out), "ipos": out}
     finally:
         conn.close()
