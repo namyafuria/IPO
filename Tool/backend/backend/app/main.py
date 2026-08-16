@@ -290,9 +290,23 @@ def trigger_gmp_sync(sources: Optional[str] = "ipogyani,ipowatch", ipowatch_limi
 
     ipogyani has no such concern -- it only covers currently-live IPOs, a
     small, bounded set, so it's safe to run uncapped on any host.
-    """
-    src_tuple = tuple(s.strip() for s in sources.split(",") if s.strip())
-    return run_gmp_sync(sources=src_tuple, ipowatch_limit=ipowatch_limit)
+
+    LOCKED (2026-08-16): shares _sync_lock with /api/sync and
+    /api/sync_and_predict -- all three write to the same SQLite file, and
+    the lock was previously only guarding /api/sync, which meant this
+    route could still collide with a /api/sync run in progress and throw
+    "database is locked" (confirmed happening in production 2026-08-16).
+    Now any one of the three running blocks the other two from starting
+    until it finishes, rather than just blocking duplicate calls to
+    itself."""
+    if not _sync_lock.acquire(blocking=False):
+        logger.info("Another sync is already in progress -- skipping GMP sync trigger.")
+        return {"status": "sync already in progress, skipped"}
+    try:
+        src_tuple = tuple(s.strip() for s in sources.split(",") if s.strip())
+        return run_gmp_sync(sources=src_tuple, ipowatch_limit=ipowatch_limit)
+    finally:
+        _sync_lock.release()
 
 
 @app.post("/api/sync")
@@ -418,9 +432,32 @@ def sync_and_predict(
     # lazy-loaded, same pattern as /api/sync below, rather than a hard
     # module-level import that every request to this file would then need.
     from .scheduler import sync_active_ipos
-    sync_active_ipos()
-    src_tuple = tuple(s.strip() for s in sources.split(",") if s.strip())
-    sync_result = run_gmp_sync(sources=src_tuple)
+
+    # LOCKED (2026-08-16): shares _sync_lock with /api/sync and
+    # /api/sync/gmp -- this route's sync_active_ipos()/run_gmp_sync() calls
+    # write to the same SQLite file those do, and were previously
+    # unguarded, which let this route collide with a /api/sync run in
+    # progress and throw "database is locked" (confirmed happening in
+    # production 2026-08-16, traced to the old frontend build's "Live
+    # IPOs" tab calling this route while cron-job.org's /api/sync was
+    # still mid-run). Only the writing portion is held under the lock --
+    # the read-only prediction loop below runs after release, so a slow
+    # prediction batch doesn't block other syncs longer than necessary.
+    # If the lock is already held, this returns a 409 rather than silently
+    # returning stale/empty predictions, since (unlike /api/sync) a
+    # "skipped" sync here would otherwise look like a normal successful
+    # response with just thin data.
+    if not _sync_lock.acquire(blocking=False):
+        raise HTTPException(
+            status_code=409,
+            detail="Another sync is already in progress -- try again shortly.",
+        )
+    try:
+        sync_active_ipos()
+        src_tuple = tuple(s.strip() for s in sources.split(",") if s.strip())
+        sync_result = run_gmp_sync(sources=src_tuple)
+    finally:
+        _sync_lock.release()
 
     days = track_days if track_days is not None else config.POST_LISTING_TRACK_DAYS
     try:
