@@ -10,11 +10,25 @@ import { fmtProb } from '../format'
 // NOT trigger a new live poll (that's the backend's job, on its own hourly
 // cadence), so a click here can legitimately show the same numbers as
 // before if less than an hour has passed.
+// FIX (2026-08-16): live_predict.py's _run_model() builds `buckets` as a
+// LIST of {label, probability, most_likely} objects (see save_prediction(),
+// which json.dumps()'s result["prediction"]["buckets"] straight into the
+// bucket_probabilities column) -- never a plain {label: probability} dict.
+// The old Object.entries()-based version treated a parsed JSON array as if
+// it were that dict shape: entries came out as [["0", {...}], ["1", {...}]]
+// (array index as key), so the "best" pick compared whole objects as
+// probabilities and rendered as "0 · NaN%" for every prediction. This reads
+// the real shape directly: prefer the entry already flagged most_likely
+// (matches _run_model's own top_i), falling back to a max-by-probability
+// scan only if that flag is ever absent.
 function bestBucket(bucketProbabilities) {
-  if (!bucketProbabilities || typeof bucketProbabilities !== 'object') return null
-  const entries = Object.entries(bucketProbabilities)
-  if (entries.length === 0) return null
-  return entries.reduce((best, cur) => (cur[1] > best[1] ? cur : best))
+  if (!Array.isArray(bucketProbabilities) || bucketProbabilities.length === 0) return null
+  const flagged = bucketProbabilities.find((b) => b.most_likely)
+  if (flagged) return [flagged.label, flagged.probability]
+  const top = bucketProbabilities.reduce((best, cur) =>
+    (cur.probability ?? -Infinity) > (best.probability ?? -Infinity) ? cur : best
+  )
+  return [top.label, top.probability]
 }
 
 function fmtMultiple(x) {

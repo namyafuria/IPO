@@ -44,11 +44,13 @@ function bucketProb(bucket) {
 
 function CompanyPrediction({ companyName, elapsed }) {
   const [horizon, setHorizon] = useState(null)
-  const [status, setStatus] = useState('loading') // loading | ready | error
+  const [status, setStatus] = useState('loading') // loading | ready | error | no_horizon
+  const [errorMessage, setErrorMessage] = useState(null)
 
   useEffect(() => {
     let cancelled = false
     setStatus('loading')
+    setErrorMessage(null)
     getTrajectorySmart(companyName, {})
       .then((data) => {
         if (cancelled) return
@@ -58,11 +60,24 @@ function CompanyPrediction({ companyName, elapsed }) {
           const day = h.day ?? Number(key.replace(/\D/g, ''))
           return day === targetDay
         })
-        setHorizon(match ? { ...match[1], day: targetDay } : null)
-        setStatus('ready')
+        if (match) {
+          setHorizon({ ...match[1], day: targetDay })
+          setStatus('ready')
+        } else {
+          setStatus('no_horizon')
+        }
       })
-      .catch(() => {
-        if (!cancelled) setStatus('error')
+      .catch((err) => {
+        if (cancelled) return
+        // FIX (2026-08-16): main.py's /api/predict_trajectory_smart route
+        // maps TrajectoryPredictionError to a 404 with a real, specific
+        // reason in `detail` (e.g. "No subscription figure available yet
+        // for '<company>'" -- see predict_trajectory.py) -- previously
+        // discarded in favor of a generic "Prediction unavailable.",
+        // which made every distinct failure look identical and impossible
+        // to diagnose from the UI alone.
+        setErrorMessage(err instanceof ApiError ? err.message : null)
+        setStatus('error')
       })
     return () => {
       cancelled = true
@@ -72,10 +87,17 @@ function CompanyPrediction({ companyName, elapsed }) {
   if (status === 'loading') {
     return <div className="mt-3 h-8 animate-pulse rounded bg-panel-raised" />
   }
-  if (status === 'error' || !horizon) {
+  if (status === 'error') {
     return (
       <p className="mt-3 border-t border-border pt-3 font-mono text-[10px] text-faint">
-        Prediction unavailable.
+        {errorMessage || 'Prediction unavailable.'}
+      </p>
+    )
+  }
+  if (status === 'no_horizon' || !horizon) {
+    return (
+      <p className="mt-3 border-t border-border pt-3 font-mono text-[10px] text-faint">
+        No prediction available for day {nextHorizonDay(elapsed)} yet.
       </p>
     )
   }
