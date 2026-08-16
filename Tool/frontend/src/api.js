@@ -68,7 +68,17 @@ export function getTrajectorySmart(name, { subscription, gmp } = {}) {
   if (subscription != null) params.set('subscription', subscription)
   if (gmp != null) params.set('gmp', gmp)
   const qs = params.toString()
-  return request(`/api/predict_trajectory_smart/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`)
+  // FIX (2026-08-16): predict_trajectory_smart_for_company() can trigger a
+  // synchronous live_fetch.fetch_and_upsert() call (an external Indian API
+  // network round-trip) inline, before responding, for any listed company
+  // still missing price_day1 -- unlike /ipos/open, which only ever reads
+  // already-cached data. The Listed tab fires one of these per card,
+  // concurrently, against what may be a single-worker free-tier instance --
+  // the default 20s budget was timing out real (if slow) responses and
+  // showing a misleading "waking up from idle" message. 45s matches
+  // syncAndPredictAll's budget for the same class of "this legitimately
+  // does external work" call.
+  return request(`/api/predict_trajectory_smart/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`, { timeoutMs: 45000 })
 }
 
 // One-shot: refreshes live GMP data server-side, then returns every
