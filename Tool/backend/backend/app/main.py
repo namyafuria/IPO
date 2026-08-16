@@ -1,5 +1,6 @@
 import logging
 import sqlite3
+import threading
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
@@ -20,6 +21,19 @@ from .routers_live import router as live_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ipo_tool.main")
+
+# FIX (2026-08-16): a full sync (run_sync_once -- polls every open IPO on
+# ipoji.com, multiple page-fetches per company plus rate-limit delays) can
+# easily take several minutes. If cron-job.org's interval is shorter than
+# that, a second /api/sync call would previously start running WHILE the
+# first was still mid-sync -- two threads writing to the same SQLite file
+# at once, which is exactly what caused the "database is locked" errors in
+# production (confirmed via Render logs 2026-08-16). This lock makes a
+# second overlapping call a cheap no-op (returns immediately, doesn't
+# queue/block) instead of racing the first one's writes. Non-blocking
+# acquire on purpose -- an external cron doesn't need to wait; it just
+# needs to not step on the sync already in progress.
+_sync_lock = threading.Lock()
 
 app = FastAPI(title="IPO Analyser API")
 
@@ -307,10 +321,24 @@ def trigger_sync():
     _maybe_start_scheduler() above) -- and even then, the free tier can
     still spin the instance down between the scheduler's own ticks if
     there's no incoming HTTP traffic, so an external cron hitting this
-    URL is the only fully reliable option on this tier regardless."""
+    URL is the only fully reliable option on this tier regardless.
+
+    LOCKED (2026-08-16): a full sync can take longer than the cron
+    interval, so if one is already in progress this returns immediately
+    with a "skipped" status instead of starting a second overlapping run
+    that would fight the first one for the SQLite write lock -- see
+    _sync_lock's comment above the app definition."""
     from .scheduler import run_sync_once
-    run_sync_once()
-    return {"status": "sync complete"}
+
+    if not _sync_lock.acquire(blocking=False):
+        logger.info("Sync already in progress -- skipping this trigger.")
+        return {"status": "sync already in progress, skipped"}
+
+    try:
+        run_sync_once()
+        return {"status": "sync complete"}
+    finally:
+        _sync_lock.release()
 
 
 # ---------------------------------------------------------------------------
