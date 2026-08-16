@@ -68,6 +68,18 @@ from bs4 import BeautifulSoup
 from .. import config
 from ..db import get_connection, find_company
 
+# FLAGGED ASSUMPTION (2026-08-16 fix): live_predict.py loads its model .pkl
+# files via `Path(__file__).resolve().parent`, same convention predict.py
+# uses for models living at the backend root -- so it's assumed to sit
+# there too, NOT inside this app/ package. Tries a top-level import first;
+# falls back to a package-relative one in case that assumption is wrong.
+# If both fail, poll_and_save_open_ipos() below will raise ImportError at
+# call time -- fix the import path here once the real layout is confirmed.
+try:
+    from live_predict import predict_live_for_company, PredictionError
+except ImportError:
+    from ..live_predict import predict_live_for_company, PredictionError  # type: ignore
+
 logger = logging.getLogger("ipo_tool.ipoji")
 
 # ---------------------------------------------------------------------------
@@ -161,6 +173,16 @@ def parse_details_page(slug: str, html: str) -> dict:
         m = re.search(pattern, full_text)
         record[field] = m.group(1).strip() if m else None
 
+    # FIX (2026-08-16): this used to be a text-scan of the page itself
+    # ("SME" in full_text[:2000] else "Mainboard"), which false-positived
+    # on every page -- ipoji's own nav/breadcrumb links ("Mainboard IPO |
+    # SME IPO") contain the literal string "SME" regardless of the actual
+    # company's category, so this always matched SME first. Category is
+    # now determined upstream, from which of the two current-ipo listing
+    # pages (/ipo/current-ipo vs /sme-ipo/current-ipo) the slug came from
+    # -- see discover_open_slugs(). This field is kept only as a fallback
+    # label for callers that don't have that context (e.g. ad-hoc single-
+    # slug debugging), not used by poll_and_save_open_ipos() anymore.
     record["ipo_type"] = "SME" if "SME" in full_text[:2000] else "Mainboard"
 
     m = re.search(r"IPO Dates\s*\n?\s*([A-Za-z]+ \d{1,2}, \d{4})\s*[–\-]\s*([A-Za-z]+ \d{1,2}, \d{4})", full_text)
@@ -273,16 +295,36 @@ def fetch_and_parse_ipo(slug: str) -> dict:
     return result
 
 
-def discover_open_slugs() -> set[str]:
-    """Moved from step4_live_poller_ipoji.py -- what the hourly job polls."""
-    slugs = set()
+_PAGE_CATEGORY = {
+    "/ipo/current-ipo": "Mainboard",
+    "/sme-ipo/current-ipo": "SME",
+}
+
+
+def discover_open_slugs() -> dict[str, str]:
+    """Moved from step4_live_poller_ipoji.py -- what the hourly job polls.
+
+    FIX (2026-08-16): now returns {slug: issue_category} instead of a bare
+    set(str). Category comes from which listing page the slug was found
+    on (this dict is the ONLY reliable source of category ipoji gives us
+    -- see the ipo_type fix in parse_details_page() above for why the
+    per-page text scan was wrong). If a slug somehow appears on both
+    pages, Mainboard wins (dict iteration order below processes Mainboard
+    first and SME would overwrite it otherwise) -- shouldn't happen in
+    practice since ipoji doesn't cross-list, but this keeps behaviour
+    deterministic rather than "whichever page's fetch happened to run
+    last"."""
+    slug_category: dict[str, str] = {}
     for page in CURRENT_PAGES:
         html = fetch(BASE + page)
         if not html:
             print(f"  [open-check] failed to fetch: {page}")
             continue
-        slugs.update(extract_slugs(html))
-    return slugs
+        category = _PAGE_CATEGORY[page]
+        for slug in extract_slugs(html):
+            if slug not in slug_category:
+                slug_category[slug] = category
+    return slug_category
 
 
 # ---------------------------------------------------------------------------
@@ -580,13 +622,13 @@ def poll_and_save_open_ipos() -> dict:
         "fetch_errors": [],
     }
 
-    open_slugs = discover_open_slugs()
+    open_slugs = discover_open_slugs()  # {slug: issue_category}
     logger.warning("discover_open_slugs found: %r", open_slugs)
     summary["open_slugs_found"] = len(open_slugs)
 
     conn = get_connection()
     try:
-        for slug in sorted(open_slugs):
+        for slug, issue_category in sorted(open_slugs.items()):
             result = fetch_and_parse_ipo(slug)
             if result["fetch_errors"]:
                 summary["fetch_errors"].append({"slug": slug, "pages": result["fetch_errors"]})
@@ -690,10 +732,15 @@ def poll_and_save_open_ipos() -> dict:
                 )
 
             # --- ipo_live_tracker: single overwritten row for this company ---
+            # FIX (2026-08-16): issue_category now comes from discover_open_slugs()
+            # (which page the slug was found on), NOT details.get("ipo_type")
+            # (the page-text scan that was always returning "SME" -- see fix
+            # in parse_details_page()). This is the actual bug fix for the
+            # "everything shows SME" issue.
             upsert_live_tracker(
                 conn,
                 company_name=company_name,
-                issue_category=details.get("ipo_type"),
+                issue_category=issue_category,
                 sector=None,  # not exposed by parse_details_page; leave for a later enrichment pass
                 status="open",
                 open_date=_to_iso_date(details.get("open_date")) or details.get("open_date"),
@@ -707,6 +754,24 @@ def poll_and_save_open_ipos() -> dict:
                 current_gmp_percent=latest_gmp_pct or _to_float(details.get("current_gmp")),
                 as_of=summary["polled_at"],
             )
+
+            # --- live prediction: compute + persist now that the tracker row
+            # for this company is up to date ---
+            # FIX (2026-08-16): this call was simply never here before --
+            # poll_and_save_open_ipos() populated ipo_live_tracker but
+            # nothing in this loop (or anywhere else in the scheduler) ever
+            # invoked live_predict.predict_live_for_company(), which is why
+            # every /ipos/open card's latest_prediction was null regardless
+            # of how much subscription/GMP data had come in. Wrapped so a
+            # prediction failure for one company (e.g. no subscription data
+            # yet on day 1 of bidding -- PredictionError, expected/normal)
+            # doesn't stop the rest of the poll from saving.
+            try:
+                predict_live_for_company(conn, company_name, persist=True)
+            except PredictionError as e:
+                logger.info("Live prediction skipped for %r: %s", company_name, e)
+            except Exception:
+                logger.exception("Unexpected error computing live prediction for %r", company_name)
 
             summary["companies_saved"].append(company_name)
 

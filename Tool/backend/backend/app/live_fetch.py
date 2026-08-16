@@ -63,6 +63,18 @@ source's data from being saved.
    run_sync_once()). fetch_and_upsert() also now accepts an optional
    `ipoji_row` so sync_active_ipos()'s loop can hand back the row it
    already has on hand, skipping even the DB lookup.
+
+--- FIX LOG (2026-08-16) ---
+6. The Indian API call (indianapi.fetch_stock()) was firing unconditionally
+   for every company on every sync, including companies that hadn't listed
+   yet -- despite this module's own docstring saying Indian API is
+   post-listing-only data. _already_listed() (already defined below, and
+   already used to gate the ipoji pre-listing partial) is now also used to
+   gate this call. Since sync_active_ipos() runs fetch_and_upsert() once
+   per ipo_live_tracker row (mostly pre-listing companies at any given
+   time), this was the direct cause of both an oversized manual-sync
+   duration and burning through the Indian API's 500-calls/month quota in
+   a single run.
 """
 
 import datetime
@@ -211,18 +223,34 @@ def fetch_and_upsert(company_name: str, ipoji_row: dict | None = None) -> dict:
         except Exception as e:  # noqa: BLE001 -- same "don't take down the rest" pattern as before
             logger.warning("ipoji lookup failed for %r: %s", company_name, e)
 
+    # FIX (2026-08-16): this call used to fire unconditionally for every
+    # company, every sync -- but per this module's own docstring, Indian
+    # API only has POST-LISTING data (sector, PE/ROE/debt-equity, day1-10
+    # price trail). _already_listed() was already defined and already used
+    # above to gate the ipoji (pre-listing) partial -- it just wasn't also
+    # used here to gate the Indian API (post-listing) partial, which is
+    # the actual mirror-image mistake. Since sync_active_ipos() calls
+    # fetch_and_upsert() once per row in ipo_live_tracker (which is almost
+    # entirely pre-listing companies at any given time -- ~47 of them),
+    # this was burning 70+ Indian API calls per sync run against a
+    # 500/month quota, on data the module itself says isn't meaningful yet
+    # for those companies.
     indianapi_partial = {}
     price_partial = {}
-    try:
-        stock = indianapi.fetch_stock(company_name)
-        if stock:
-            indianapi_partial = indianapi.to_partial_record(stock)
-            listing_date = existing.get("listing_date")
-            if listing_date:
+    if _already_listed(existing.get("listing_date")):
+        try:
+            stock = indianapi.fetch_stock(company_name)
+            if stock:
+                indianapi_partial = indianapi.to_partial_record(stock)
                 history = indianapi.fetch_historical_prices(company_name)
-                price_partial = indianapi.prices_by_offset(history, listing_date)
-    except indianapi.IndianAPIError as e:
-        logger.warning("Indian API fetch failed for %r: %s", company_name, e)
+                price_partial = indianapi.prices_by_offset(history, existing.get("listing_date"))
+        except indianapi.IndianAPIError as e:
+            logger.warning("Indian API fetch failed for %r: %s", company_name, e)
+    else:
+        logger.info(
+            "Skipping Indian API fetch for %r -- not listed yet (or listing "
+            "date unknown); Indian API only has post-listing data.", company_name,
+        )
 
     if not ipoji_partial and not indianapi_partial and not existing_record:
         raise LookupError(f"No data found for '{company_name}' from any source, and it isn't in the DB.")

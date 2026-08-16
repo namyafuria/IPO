@@ -62,6 +62,7 @@ complexity there, matching the original call.
 """
 
 import datetime
+import logging
 import sys
 from pathlib import Path
 from typing import Optional
@@ -69,6 +70,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 import pickle
+
+logger = logging.getLogger("ipo_tool.predict_trajectory")
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 
@@ -359,11 +362,27 @@ def predict_trajectory_smart_for_company(
         and record.listing_date[:10] <= datetime.date.today().isoformat()
     )
     if listed and record.price_day1 is None:
+        # FIX (2026-08-16): this only caught LookupError before, so any other
+        # failure from fetch_and_upsert() -- a network error, a bad response,
+        # or (most likely in production right now) an IndianAPI
+        # quota-exceeded error -- propagated straight out of this function,
+        # past the route's `except TrajectoryPredictionError` in main.py, and
+        # surfaced as a raw 500. That 500 is what the frontend was almost
+        # certainly rendering as "Prediction unavailable" for every recently-
+        # listed company (each one retries this same live fetch on every card
+        # render until price_day1 lands, so a single exhausted API quota
+        # takes ALL of them down at once, not just one). This function's own
+        # docstring already promises "never 409s ... just silently served
+        # pre-listing" when data isn't ready -- broadening the catch here is
+        # what actually delivers that promise instead of only claiming it.
         try:
             live_fetch.fetch_and_upsert(name)
-        except LookupError:
-            pass  # record already exists in DB; this shouldn't fire in practice
-        record, exact = find_company(name)  # re-read whatever the fetch just wrote
+        except Exception:
+            logger.warning(
+                "Live price fetch failed for %r; falling back to pre-listing "
+                "prediction for this request.", name, exc_info=True,
+            )
+        record, exact = find_company(name)  # re-read whatever the fetch just wrote (may be unchanged)
 
     base = predict_trajectory_for_company(name, subscription_override, gmp_override)
     horizons = base["horizons"]
