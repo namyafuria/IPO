@@ -153,6 +153,31 @@ def _fetch_zip_csv(url: str, extra_headers: dict | None = None, session=None) ->
 _NSE_EQUITY_SERIES = {"EQ", "BE", "BZ", "SM", "ST"}
 
 
+def _nse_session() -> requests.Session:
+    """Cookie handshake NSE requires before it'll serve the real bhavcopy
+    URL -- confirmed necessary by your own working downloader script
+    (session.get nseindia.com first, Referer on the follow-up request).
+    fetch_nse_bhavcopy() below previously skipped this and relied on a
+    bare requests.get(); it apparently worked once in production (3,189
+    ISINs parsed per this module's earlier FIX LOG), but that's
+    NSE-session-cookie-dependent behavior that can start 403ing without
+    warning, so it's worth doing the handshake properly rather than
+    relying on it working by luck."""
+    session = requests.Session()
+    warmup_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.nseindia.com/",
+    }
+    try:
+        session.get("https://www.nseindia.com", headers=warmup_headers, timeout=10)
+    except requests.RequestException as e:
+        logger.warning("NSE session warm-up failed (continuing anyway): %s", e)
+    return session
+
+
 def fetch_nse_bhavcopy(date: datetime.date) -> dict[str, float]:
     """{isin: close_price} for NSE equities on `date`.
 
@@ -164,21 +189,29 @@ def fetch_nse_bhavcopy(date: datetime.date) -> dict[str, float]:
         https://nsearchives.nseindia.com/content/cm/BhavCopy_NSE_CM_0_0_0_{YYYYMMDD}_F_0000.csv.zip
     with a different column set (ISIN, TckrSymb, SctySrs, ClsPric, among
     others) than the old SYMBOL/SERIES/CLOSE layout this function used to
-    assume. Filters to _NSE_EQUITY_SERIES so index/derivative-adjacent rows
-    in the combined file don't get mixed into the equity close-price map.
-    Still worth a smoke test against a real recent date before fully
-    trusting this -- see module docstring point (a)."""
+    assume. Requires FinInstrmTp == "STK" (excludes index/derivative rows
+    the combined file also carries) -- SctySrs is checked too for NSE
+    (EQ/BE/BZ/SM/ST are real NSE equity series codes), unlike BSE where
+    that filter turned out to be wrong (see fetch_bse_bhavcopy()'s FIX
+    LOG, round 4, for why BSE dropped it instead).
+
+    FIX (round 2): added the NSE session warm-up (_nse_session()) your
+    own confirmed-working downloader script uses -- this function
+    previously fired a bare requests.get() with no cookie handshake."""
     import csv
 
+    session = _nse_session()
     url = (
         f"https://nsearchives.nseindia.com/content/cm/"
         f"BhavCopy_NSE_CM_0_0_0_{date.strftime('%Y%m%d')}_F_0000.csv.zip"
     )
-    text = _fetch_zip_csv(url)
+    text = _fetch_zip_csv(url, extra_headers={"Referer": "https://www.nseindia.com/all-reports"}, session=session)
     if not text:
         return {}
     out = {}
     for row in csv.DictReader(io.StringIO(text)):
+        if row.get("FinInstrmTp") != "STK":
+            continue
         isin = (row.get("ISIN") or "").strip()
         series = (row.get("SctySrs") or "").strip().upper()
         close = row.get("ClsPric")
@@ -221,28 +254,31 @@ def fetch_bse_bhavcopy(date: datetime.date) -> dict[str, float]:
     """{isin: close_price} for BSE equities on `date`, keyed by ISIN where
     present.
 
-    FIX (2026-08-17), round 3: rounds 1-2 (Referer header, session
-    warm-up) never had a chance -- the diagnostic added in round 2
-    confirmed the URL itself was dead: BSE's `EQ_ISINCODE_<DDMMYY>.zip`
-    (this function's original URL) was discontinued on 2024-07-08, the
-    SAME date NSE discontinued its old format (confirmed by fetching BSE's
-    own /markets/MarketInfo/BhavCopy.aspx page this session, which lists
-    it in a table of discontinued files). Both exchanges moved to a common
-    "UDiFF" (Unified Distilled File Format) standard together. BSE's new
-    URL (confirmed via two independently search-indexed real examples this
-    session):
+    FIX (2026-08-17), round 3: the URL itself was dead: BSE's
+    `EQ_ISINCODE_<DDMMYY>.zip` (this function's original URL) was
+    discontinued on 2024-07-08, the SAME date NSE discontinued its old
+    format -- both exchanges moved to a common "UDiFF" standard together.
+    BSE's new URL (now independently confirmed working against your own
+    account and your own downloader script, and column layout confirmed
+    directly from your uploaded BhavCopy_BSE_20250101.csv sample):
         https://www.bseindia.com/download/BhavCopy/Equity/BhavCopy_BSE_CM_0_0_0_{YYYYMMDD}_F_0000.CSV
-    Note this is a PLAIN .CSV, not a .zip like NSE's (hence _fetch_text()
-    instead of _fetch_zip_csv()). Column names are ASSUMED to match NSE's
-    UDiFF columns (ISIN, SctySrs, ClsPric) since both exchanges standardized
-    on the same UDiFF spec together -- NOT independently confirmed by
-    actually downloading a real file and inspecting it this session (BSE's
-    site blocked this session's direct fetch attempts at the content
-    itself, only the surrounding page was reachable). If the next real run
-    shows 0 ISINs parsed despite a successful (non-HTML) fetch, that's the
-    column-name assumption being wrong -- check
-    https://www.bseindia.com/downloads1/UDiFF_BhavCopy_format.xlsx for the
-    real column layout."""
+    A PLAIN .CSV, not a .zip like NSE's (hence _fetch_text()).
+
+    FIX (2026-08-17), round 4 -- THE REAL BUG, confirmed against your
+    real sample file: round 3 correctly matched BSE's column NAMES to
+    NSE's UDiFF layout (ISIN, SctySrs, ClsPric all present, confirmed),
+    but wrongly assumed the column VALUES would also match -- filtering
+    BSE's SctySrs against _NSE_EQUITY_SERIES ({"EQ","BE","BZ","SM","ST"}).
+    BSE's real SctySrs values are its OWN group codes (confirmed from the
+    sample: A, B, T, TS, X, Z, M, MT, R, G, F, IF, MS, P, ZP, XT) -- none
+    of which overlap NSE's series codes at all. That silently dropped
+    EVERY BSE row (confirmed: 0 of 4,411 rows survived the old filter on
+    the sample file). Fix: filter on FinInstrmTp == "STK" only (all 4,411
+    sample rows are already "STK" -- this column reliably separates
+    equities from any non-equity instrument types the combined file might
+    carry) and drop the series-based filter entirely for BSE -- there's no
+    BSE-specific equivalent of "which series codes mean regular equity"
+    worth hand-picking here, and FinInstrmTp already does that job."""
     session = requests.Session()
     try:
         session.get(
@@ -268,10 +304,11 @@ def fetch_bse_bhavcopy(date: datetime.date) -> dict[str, float]:
         return {}
     out = {}
     for row in csv.DictReader(io.StringIO(text)):
+        if row.get("FinInstrmTp") != "STK":
+            continue
         isin = (row.get("ISIN") or "").strip()
-        series = (row.get("SctySrs") or "").strip().upper()
         close = row.get("ClsPric")
-        if isin and close and (not series or series in _NSE_EQUITY_SERIES):
+        if isin and close:
             try:
                 out[isin] = float(close)
             except ValueError:
