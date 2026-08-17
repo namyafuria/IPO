@@ -7,7 +7,7 @@ class ApiError extends Error {
   }
 }
 
-async function request(path, { method = 'GET', timeoutMs = 20000 } = {}) {
+async function request(path, { method = 'GET', timeoutMs = 30000 } = {}) {
   let res
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -58,8 +58,11 @@ export function getPrediction(name, { subscription, gmp } = {}) {
   // "waking up from idle" message even though the backend was already
   // warm -- same root cause getTrajectorySmart was fixed for on 2026-08-16
   // (predict can trigger a synchronous live-data fetch server-side before
-  // responding). Matching that 45s budget here.
-  return request(`/api/predict/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`, { timeoutMs: 45000 })
+  // responding). Bumped 45s -> 60s (2026-08-17): Render's own dashboard
+  // warns cold starts can take "50 seconds or more", so 45s didn't leave
+  // enough margin -- still saw the "waking up from idle" message on
+  // responses that were just legitimately slow, not actually failing.
+  return request(`/api/predict/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`, { timeoutMs: 60000 })
 }
 
 export function getTrajectory(name, { subscription, gmp } = {}) {
@@ -70,7 +73,7 @@ export function getTrajectory(name, { subscription, gmp } = {}) {
   // FIX (2026-08-17): same call class as getPrediction/getTrajectorySmart
   // above -- bumped preventively for consistency, not yet confirmed
   // failing in production like the other two were.
-  return request(`/api/predict_trajectory/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`, { timeoutMs: 45000 })
+  return request(`/api/predict_trajectory/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`, { timeoutMs: 60000 })
 }
 
 export function getTrajectorySmart(name, { subscription, gmp } = {}) {
@@ -85,10 +88,11 @@ export function getTrajectorySmart(name, { subscription, gmp } = {}) {
   // already-cached data. The Listed tab fires one of these per card,
   // concurrently, against what may be a single-worker free-tier instance --
   // the default 20s budget was timing out real (if slow) responses and
-  // showing a misleading "waking up from idle" message. 45s matches
-  // syncAndPredictAll's budget for the same class of "this legitimately
-  // does external work" call.
-  return request(`/api/predict_trajectory_smart/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`, { timeoutMs: 45000 })
+  // showing a misleading "waking up from idle" message. Bumped 45s -> 60s
+  // (2026-08-17) to match the same margin fix applied to getPrediction,
+  // since Render's cold starts can run "50 seconds or more" per their own
+  // dashboard warning.
+  return request(`/api/predict_trajectory_smart/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`, { timeoutMs: 60000 })
 }
 
 // One-shot: refreshes live GMP data server-side, then returns every
