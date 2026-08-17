@@ -309,6 +309,39 @@ def trigger_gmp_sync(sources: Optional[str] = "ipogyani,ipowatch", ipowatch_limi
         _sync_lock.release()
 
 
+@app.post("/api/sync/bhavcopy")
+def trigger_bhavcopy_sync():
+    """Runs the daily NSE/BSE bhavcopy price sync (fills price_day1/2/3/5/10
+    for companies in their Day1-10 window from the previous trading day's
+    EOD close) plus the bounded Indian-API gap-fill fallback for rows
+    bhavcopy never got a row for -- see bhavcopy_sync.py.
+
+    Bhavcopy is only published once per trading day, so this is meant to
+    be called by its own once-daily external cron entry (cron-job.org),
+    separate from /api/sync's 10-15 minute cadence -- see bhavcopy_sync.py's
+    module docstring on confirming NSE's actual publish time before fixing
+    that schedule. It's idempotent-safe to call more than once a day
+    regardless: run_bhavcopy_sync()/backfill_price_gaps() only ever fill a
+    currently-NULL price_dayN cell, never overwrite one, so a repeat call
+    the same day is just wasted work, not a correctness problem.
+
+    LOCKED: shares _sync_lock with /api/sync, /api/sync/gmp, and
+    /api/sync_and_predict -- same reasoning as those three (all write to
+    the same SQLite file). Same non-blocking-skip style as /api/sync/gmp,
+    not the 409 style /api/sync_and_predict uses -- this is a scheduled
+    background sync route, not a request a frontend action is waiting on."""
+    from .scheduler import sync_bhavcopy
+
+    if not _sync_lock.acquire(blocking=False):
+        logger.info("Another sync is already in progress -- skipping bhavcopy sync trigger.")
+        return {"status": "sync already in progress, skipped"}
+    try:
+        result = sync_bhavcopy()
+        return {"status": "bhavcopy sync complete", **result}
+    finally:
+        _sync_lock.release()
+
+
 @app.post("/api/sync")
 def trigger_sync():
     """Manually kick the same sync the background scheduler runs -- this is

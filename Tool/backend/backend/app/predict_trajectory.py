@@ -61,7 +61,6 @@ re-checked and found small (~1pt either way) -- not worth the added
 complexity there, matching the original call.
 """
 
-import datetime
 import logging
 import sys
 from pathlib import Path
@@ -84,7 +83,6 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from ipo_model_utils import SectorTargetEncoder  # noqa: F401,E402 -- required for unpickling
-from . import live_fetch
 from .db import find_company
 from .schemas import IPORecord
 from .predict_trajectory_rolling import predict_trajectory_rolling
@@ -344,10 +342,11 @@ def predict_trajectory_smart_for_company(
     for them). day5 switches to rolling once price_day2 is known; day10
     switches once price_day5 is known -- independently.
 
-    If the company has listed but price_day1 is still empty (listed but
-    never fetched, vs genuinely upcoming), this fetches synchronously via
-    live_fetch.fetch_and_upsert() before deciding -- a stale DB row should
-    not be silently read as "still pre-listing".
+    If the company has listed but price_day1 is still empty, this simply
+    reads that as "not yet available" and serves pre-listing mode for that
+    horizon (see FIX 2026-08-17 below) -- price_dayN arrives via
+    bhavcopy_sync.py's daily run, not a synchronous fetch inside this
+    request path.
 
     Each horizon's result is tagged with a "mode" key ("pre_listing" or
     "rolling") so callers (and the frontend) don't have to infer mode from
@@ -357,33 +356,19 @@ def predict_trajectory_smart_for_company(
     if record is None:
         raise TrajectoryPredictionError(f"No match found for '{name}' in the database.")
 
-    listed = (
-        record.listing_date is not None
-        and record.listing_date[:10] <= datetime.date.today().isoformat()
-    )
-    if listed and record.price_day1 is None:
-        # FIX (2026-08-16): this only caught LookupError before, so any other
-        # failure from fetch_and_upsert() -- a network error, a bad response,
-        # or (most likely in production right now) an IndianAPI
-        # quota-exceeded error -- propagated straight out of this function,
-        # past the route's `except TrajectoryPredictionError` in main.py, and
-        # surfaced as a raw 500. That 500 is what the frontend was almost
-        # certainly rendering as "Prediction unavailable" for every recently-
-        # listed company (each one retries this same live fetch on every card
-        # render until price_day1 lands, so a single exhausted API quota
-        # takes ALL of them down at once, not just one). This function's own
-        # docstring already promises "never 409s ... just silently served
-        # pre-listing" when data isn't ready -- broadening the catch here is
-        # what actually delivers that promise instead of only claiming it.
-        try:
-            live_fetch.fetch_and_upsert(name)
-        except Exception:
-            logger.warning(
-                "Live price fetch failed for %r; falling back to pre-listing "
-                "prediction for this request.", name, exc_info=True,
-            )
-        record, exact = find_company(name)  # re-read whatever the fetch just wrote (may be unchanged)
-
+    # FIX (2026-08-17): dropped the synchronous live_fetch.fetch_and_upsert()
+    # call that used to fire here when a listed company's price_day1 was
+    # still NULL (see the removed FIX 2026-08-16 note this replaces). Now
+    # that bhavcopy_sync.py's daily run fills price_day1..10 on its own
+    # schedule (with a bounded per-company Indian API gap-fill fallback of
+    # its own -- see that module's backfill_price_gaps()), this request path
+    # no longer needs to pull a live price mid-request: it just reads
+    # whatever's in the DB right now and serves pre-listing mode for that
+    # horizon until bhavcopy_sync fills it in, same as any other NULL
+    # price_dayN field. This also removes this route's exposure to the
+    # IndianAPI quota-exhaustion failure mode described in the old FIX log
+    # (every recently-listed company's card retrying the same failing fetch
+    # on each render) since nothing here calls Indian API anymore.
     base = predict_trajectory_for_company(name, subscription_override, gmp_override)
     horizons = base["horizons"]
     for h in horizons:

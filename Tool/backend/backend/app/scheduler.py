@@ -28,6 +28,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from . import config, db, live_fetch
 from .gmp_sync import run_gmp_sync
 from .fetchers import ipoji
+from .bhavcopy_sync import run_bhavcopy_sync, backfill_price_gaps
 
 logger = logging.getLogger("ipo_tool.scheduler")
 
@@ -160,6 +161,40 @@ def sync_ipoji_open_ipos():
         return None
 
 
+def sync_bhavcopy():
+    """Pass 5: previous trading day's NSE/BSE bhavcopy close prices ->
+    price_dayN for companies in their Day1-10 window (see bhavcopy_sync.py),
+    then the bounded gap-fill fallback for any (company, horizon) bhavcopy
+    never had a row for. Same 'one bad source shouldn't stop the batch'
+    resilience pattern as passes 1-4. Runs on its OWN daily job in
+    start_scheduler() below (bhavcopy is only published once/day, well
+    after this project's SYNC_INTERVAL_MINUTES cadence would re-check it
+    usefully) -- same 'dedicated job + also reachable via run_sync_once()'
+    pattern as sync_ipoji_open_ipos()/Pass 4.
+
+    Returns {"sync": <run_bhavcopy_sync result or None>, "gap_fill":
+    <backfill_price_gaps result or None>} -- None for a stage that raised,
+    same "don't take down the batch" pattern as every other pass, but
+    surfaced in the return value (like sync_ipoji_open_ipos()) rather than
+    silently swallowed, so /api/sync/bhavcopy has real data to hand back
+    instead of just a status string."""
+    sync_result = None
+    try:
+        sync_result = run_bhavcopy_sync()
+        logger.info("Bhavcopy price sync: %s", sync_result)
+    except Exception as e:  # noqa: BLE001 -- same pattern as passes 1-4
+        logger.warning("Bhavcopy price sync failed: %s", e)
+
+    gap_result = None
+    try:
+        gap_result = backfill_price_gaps()
+        logger.info("Bhavcopy gap-fill: %s", gap_result)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Bhavcopy gap-fill failed: %s", e)
+
+    return {"sync": sync_result, "gap_fill": gap_result}
+
+
 def run_sync_once():
     # FIX (2026-08-15): sync_ipoji_open_ipos() now runs FIRST -- it's the
     # one that actually scrapes ipoji.com and populates ipo_live_tracker.
@@ -169,6 +204,7 @@ def run_sync_once():
     sync_active_ipos()
     sync_recent_listings()
     sync_gmp_trend()
+    sync_bhavcopy()
 
 
 def start_scheduler() -> BackgroundScheduler:
@@ -183,9 +219,20 @@ def start_scheduler() -> BackgroundScheduler:
     # independently of whatever SYNC_INTERVAL_MINUTES happens to be.
     scheduler.add_job(sync_ipoji_open_ipos, "interval", hours=1,
                        id="ipoji_sync", next_run_time=None)
+    # Bhavcopy is published once/day (see bhavcopy_sync.py) -- its own
+    # daily job, same "dedicated cadence + also reachable via the manual
+    # /api/sync button through run_sync_once()" pattern as ipoji_sync
+    # above. NOTE: this fires at whatever wall-clock time the process
+    # started + 24h multiples (APScheduler "interval", not "cron") -- swap
+    # to a cron-style trigger with an explicit IST hour once NSE's real
+    # bhavcopy publish time is confirmed (see bhavcopy_sync.py module
+    # docstring point (a) and item 4's note on checking the real URL).
+    scheduler.add_job(sync_bhavcopy, "interval", hours=24,
+                       id="bhavcopy_sync", next_run_time=None)
     scheduler.start()
     logger.info(
-        "Background sync started: full sync every %s minutes, IPO Ji poll every hour.",
+        "Background sync started: full sync every %s minutes, IPO Ji poll every hour, "
+        "bhavcopy sync every 24 hours.",
         config.SYNC_INTERVAL_MINUTES,
     )
     return scheduler
