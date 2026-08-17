@@ -34,17 +34,17 @@ routers_live.py was uploaded and reconciled against (see below) -- point
 (b) from the original build is resolved. Two gaps remain, both because
 the underlying files still haven't been uploaded:
 
-  a) [partially resolved] NSE's URL/columns were wrong (confirmed via
-     production logs: HTTP 404) -- NSE discontinued the old `cm<DATE>
-     bhav.csv.zip` path on 2024-07-08 (Circular 62424) and switched to the
-     "CM-UDiFF Common Bhavcopy Final" format. fetch_nse_bhavcopy() now uses
-     that real URL/column set (see its own docstring). BSE's fetch got a
-     Referer header added (its "not a zip" response looked like an
-     HTML page being returned instead of the file, which a missing
-     Referer/session context commonly causes) but its URL/column
-     convention itself is still NOT independently verified against your
-     historical parser -- if it's still failing after this, see
-     fetch_bse_bhavcopy()'s docstring for the next thing to check.
+  a) [NSE resolved, BSE round 2] NSE's fix from round 1 is confirmed
+     working in production (3,189 ISINs parsed on a real run). BSE's
+     Referer-header fix from round 1 was NOT enough -- same "not a zip"
+     result on the next real run. fetch_bse_bhavcopy() now adds a session
+     warm-up (plain GET to bseindia.com first, cookies carried into the
+     download request) since BSE's download endpoint is known to sit
+     behind a bot/WAF check. _fetch_zip_csv() also now logs the actual
+     content-type + a body preview on any "not a zip" result, so if this
+     STILL fails, the next run's logs will show what's actually coming
+     back instead of another guess. BSE's URL/column convention itself is
+     still not independently verified against your historical parser.
   b) [resolved] _trading_days_elapsed_batch is now imported directly from
      the real routers_live.py (reuses its NSE session calendar via
      pandas_market_calendars, same one /ipos/listed uses -- correctly
@@ -110,9 +110,14 @@ def _previous_trading_day(as_of: datetime.date | None = None) -> datetime.date:
 
 
 # --- fetch + parse ---------------------------------------------------------
-def _fetch_zip_csv(url: str, extra_headers: dict | None = None) -> str | None:
-    headers = {"User-Agent": "Mozilla/5.0", **(extra_headers or {})}
-    resp = requests.get(url, timeout=30, headers=headers)
+def _fetch_zip_csv(url: str, extra_headers: dict | None = None, session=None) -> str | None:
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        **(extra_headers or {}),
+    }
+    requester = session or requests
+    resp = requester.get(url, timeout=30, headers=headers)
     if resp.status_code != 200:
         logger.warning("Bhavcopy fetch %s -> HTTP %s", url, resp.status_code)
         return None
@@ -121,8 +126,19 @@ def _fetch_zip_csv(url: str, extra_headers: dict | None = None) -> str | None:
             name = zf.namelist()[0]
             return zf.read(name).decode("utf-8", errors="replace")
     except zipfile.BadZipFile:
-        logger.warning("Bhavcopy fetch %s -> not a zip (holiday / no file yet? or an HTML "
-                        "error/login page instead of the file)", url)
+        # FIX (2026-08-17): "not a zip" alone wasn't enough to tell a real
+        # holiday/no-file-yet case apart from BSE quietly serving an HTML
+        # error/challenge page with a 200 status (the Referer-header fix
+        # didn't resolve this in production, so it's worth actually seeing
+        # what came back instead of guessing again). Logs the content-type
+        # and first 200 bytes of the body -- if that's an HTML block/
+        # captcha page, the real fix is the session warm-up below; if it's
+        # genuinely empty/tiny, that's the holiday case.
+        preview = resp.content[:200]
+        logger.warning(
+            "Bhavcopy fetch %s -> not a zip. content-type=%r, status=%s, first 200 bytes: %r",
+            url, resp.headers.get("Content-Type"), resp.status_code, preview,
+        )
         return None
 
 
@@ -178,24 +194,38 @@ def fetch_bse_bhavcopy(date: datetime.date) -> dict[str, float]:
     """{isin: close_price} for BSE equities on `date`, keyed by ISIN where
     present.
 
-    FIX (2026-08-17): added a Referer header -- BSE's download endpoint has
-    been known to return an HTML page (not the file) to requests that don't
-    look like they came from a browser session on bseindia.com, which
-    would explain the "not a zip" warning seen in production logs (as
-    opposed to a real holiday/no-file-yet case). URL/column convention
-    otherwise UNCHANGED from before and still NOT independently re-verified
-    against your validated historical parser this session -- see module
-    docstring point (a). If this still fails after the header fix, BSE's
-    URL/date-suffix format itself may have changed (some sources suggest a
-    settlement-type suffix like `_T0` was added at some point) and needs a
-    real look at a fresh manual download from bseindia.com to confirm."""
+    FIX (2026-08-17), round 2: adding a Referer header alone did NOT fix
+    production's "not a zip" result (confirmed via a second real run --
+    same warning, same date, NSE succeeded for that date so it isn't a
+    holiday). Added a session warm-up instead: a plain GET to
+    https://www.bseindia.com/ first, then the download request reusing
+    that session's cookies -- BSE's download endpoint is known to sit
+    behind a bot/WAF check that a cookieless request fails even with a
+    normal-looking User-Agent/Referer. _fetch_zip_csv() above now also
+    logs the actual content-type + a body preview on failure, so if this
+    STILL doesn't work, the next run's logs will show what's actually
+    coming back (an HTML challenge page vs. something else) instead of
+    guessing a third time. URL/column convention itself still not
+    independently verified against your historical parser -- see module
+    docstring point (a)."""
     import csv
+
+    session = requests.Session()
+    try:
+        session.get(
+            "https://www.bseindia.com/",
+            timeout=15,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"},
+        )
+    except requests.RequestException as e:
+        logger.warning("BSE warm-up request failed (continuing anyway): %s", e)
 
     url = f"https://www.bseindia.com/download/BhavCopy/Equity/EQ_ISINCODE_{date.strftime('%d%m%y')}.zip"
     text = _fetch_zip_csv(url, extra_headers={
         "Referer": "https://www.bseindia.com/markets/equity/EQReports/BhavCopy.aspx",
         "Accept": "*/*",
-    })
+    }, session=session)
     if not text:
         return {}
     out = {}
