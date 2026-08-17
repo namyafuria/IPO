@@ -52,7 +52,14 @@ export function getPrediction(name, { subscription, gmp } = {}) {
   if (subscription != null) params.set('subscription', subscription)
   if (gmp != null) params.set('gmp', gmp)
   const qs = params.toString()
-  return request(`/api/predict/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`)
+  // FIX (2026-08-17): was on the default 20s budget. Confirmed failing
+  // in production for open/awaiting-listing companies (e.g. Dhoot
+  // Transmission's "Listing-day gain prediction" panel) with the
+  // "waking up from idle" message even though the backend was already
+  // warm -- same root cause getTrajectorySmart was fixed for on 2026-08-16
+  // (predict can trigger a synchronous live-data fetch server-side before
+  // responding). Matching that 45s budget here.
+  return request(`/api/predict/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`, { timeoutMs: 45000 })
 }
 
 export function getTrajectory(name, { subscription, gmp } = {}) {
@@ -60,7 +67,10 @@ export function getTrajectory(name, { subscription, gmp } = {}) {
   if (subscription != null) params.set('subscription', subscription)
   if (gmp != null) params.set('gmp', gmp)
   const qs = params.toString()
-  return request(`/api/predict_trajectory/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`)
+  // FIX (2026-08-17): same call class as getPrediction/getTrajectorySmart
+  // above -- bumped preventively for consistency, not yet confirmed
+  // failing in production like the other two were.
+  return request(`/api/predict_trajectory/${encodeURIComponent(name)}${qs ? `?${qs}` : ''}`, { timeoutMs: 45000 })
 }
 
 export function getTrajectorySmart(name, { subscription, gmp } = {}) {
