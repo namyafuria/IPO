@@ -643,10 +643,38 @@ def upsert_live_tracker(
 
 
 def remove_from_live_tracker(conn: sqlite3.Connection, company_name: str) -> None:
-    """Called once an IPO closes (its closing snapshot has been saved) --
-    ipo_live_tracker is meant to hold only currently-open IPOs, per the
-    /ipos/open use case in Step 6."""
+    """DEPRECATED (2026-08-17): this used to hard-delete the row the moment
+    a company dropped out of discover_open_slugs()'s "current" set. That
+    silently destroyed the only live record for every company the instant
+    it listed -- confirmed as the root cause of listed companies vanishing
+    from BOTH /ipos/open and /ipos/listed (nothing downstream ever captured
+    a closing snapshot before the delete). Kept only so any other caller
+    that genuinely wants a hard delete still can; poll_and_save_open_ipos()
+    below no longer calls this -- see mark_as_listed()."""
     conn.execute("DELETE FROM ipo_live_tracker WHERE company_name = ?", (company_name,))
+
+
+def mark_as_listed(conn: sqlite3.Connection, company_name: str, as_of: str) -> None:
+    """FIX (2026-08-17): replaces remove_from_live_tracker() in the cleanup
+    step. A company that's dropped out of the "current" discovery set has
+    closed/listed, not disappeared -- flip its status in place instead of
+    deleting the row, so whatever subscription/GMP/prediction values were
+    last captured survive for a Listed section to read later, and so this
+    table can itself become the source /ipos/listed reads from (rather than
+    relying solely on the not-yet-built ipo_master_records/INDIANAPI_API_KEY
+    backfill from Stage 4). Does NOT re-fetch ipoji for a fresh closing
+    snapshot -- by the time a company leaves "current" its ipoji detail/
+    subscription pages have typically already rotated to a "listed" layout
+    this parser doesn't target, so whatever was last polled while it was
+    still "current" is what persists. That's still strictly better than
+    deleting it, but callers should not assume this is a true Day-N-close
+    snapshot -- check as_of / the day-wise gmp_trend & subscription_daywise
+    rows (untouched by this table, never deleted) for the real last-known
+    day."""
+    conn.execute(
+        "UPDATE ipo_live_tracker SET status = 'listed', as_of = ? WHERE company_name = ?",
+        (as_of, company_name),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -883,14 +911,19 @@ def poll_and_save_open_ipos() -> dict:
             # in this same run is preserved rather than lost.
             conn.commit()
 
-        # Anything in ipo_live_tracker that's no longer in the open set today
-        # has closed since the last poll -- drop it (Step 6's /ipos/open reads
-        # this table directly, so it must only ever hold currently-open IPOs).
-        cur = conn.execute("SELECT company_name FROM ipo_live_tracker")
+        # FIX (2026-08-17): anything in ipo_live_tracker that's no longer in
+        # today's open set has closed/listed since the last poll -- mark it
+        # "listed" in place instead of deleting it (see mark_as_listed()
+        # docstring). /ipos/open's query must filter status = 'open' (or
+        # whatever this project's "currently open" status literal is) so
+        # these don't leak back into the Open section -- that filter lives
+        # in db.py/main.py, not here; check it if listed companies start
+        # reappearing in /ipos/open.
+        cur = conn.execute("SELECT company_name FROM ipo_live_tracker WHERE status != 'listed'")
         tracked = {r["company_name"] for r in cur.fetchall()}
         still_open = set(summary["companies_saved"])
         for stale_name in tracked - still_open:
-            remove_from_live_tracker(conn, stale_name)
+            mark_as_listed(conn, stale_name, summary["polled_at"])
 
         conn.commit()
     finally:
