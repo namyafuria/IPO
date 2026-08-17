@@ -318,9 +318,12 @@ def trigger_bhavcopy_sync():
 
     Bhavcopy is only published once per trading day, so this is meant to
     be called by its own once-daily external cron entry (cron-job.org),
-    separate from /api/sync's 10-15 minute cadence -- see bhavcopy_sync.py's
+    separate from /api/sync's 4-hour cron cadence -- see bhavcopy_sync.py's
     module docstring on confirming NSE's actual publish time before fixing
-    that schedule. It's idempotent-safe to call more than once a day
+    that schedule. (The separate 10-min GET /ipos/open keep-alive ping some
+    deployments use to stop Render's free tier from spinning down doesn't
+    touch this route or live_fetch at all -- it's a read-only query against
+    ipo_live_tracker, no Indian API involved.) It's idempotent-safe to call more than once a day
     regardless: run_bhavcopy_sync()/backfill_price_gaps() only ever fill a
     currently-NULL price_dayN cell, never overwrite one, so a repeat call
     the same day is just wasted work, not a correctness problem.

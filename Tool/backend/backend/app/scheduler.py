@@ -80,9 +80,9 @@ def sync_active_ipos():
         # _already_listed() gate already skips that half) -- but
         # fetch_and_upsert() ALSO still fires an Indian API call for any
         # already-listed row (its post-listing branch), and this loop runs
-        # EVERY cron cycle (every SYNC_INTERVAL_MINUTES, i.e. every 10-15
-        # min) for EVERY row still sitting in ipo_live_tracker. That's what
-        # was burning the Indian API's 500/month quota in production
+        # EVERY cron cycle (POST /api/sync, on a 4-hour external cron) for
+        # EVERY row still sitting in ipo_live_tracker. That's what was
+        # burning the Indian API's 500/month quota in production
         # (confirmed via Render logs 2026-08-17: repeated "Indian API rate
         # limit / credits exhausted" warnings) -- not the per-request call
         # in predict_trajectory.py, which was already removed. Post-listing
@@ -108,8 +108,9 @@ def sync_recent_listings():
     its own bounded Indian API gap-fill fallback (backfill_price_gaps())
     for the rare row bhavcopy genuinely never got a row for. Calling this
     pass too meant hitting Indian API for the SAME companies bhavcopy_sync
-    was already covering, every 10-15 min, which was the other half of
-    the quota-exhaustion problem alongside sync_active_ipos() above.
+    was already covering, on every 4-hour /api/sync cron run, which was
+    the other half of the quota-exhaustion problem alongside
+    sync_active_ipos() above.
     Function kept (unused by run_sync_once() below) rather than deleted,
     in case it's ever needed for a manual one-off backfill."""
     conn = db.get_connection()
