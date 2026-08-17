@@ -75,6 +75,25 @@ def sync_active_ipos():
         name = row.get("company_name")
         if not name:
             continue
+        # FIX (2026-08-17): skip rows that have already listed. ipoji's
+        # pre-listing data is frozen for these anyway (live_fetch's own
+        # _already_listed() gate already skips that half) -- but
+        # fetch_and_upsert() ALSO still fires an Indian API call for any
+        # already-listed row (its post-listing branch), and this loop runs
+        # EVERY cron cycle (every SYNC_INTERVAL_MINUTES, i.e. every 10-15
+        # min) for EVERY row still sitting in ipo_live_tracker. That's what
+        # was burning the Indian API's 500/month quota in production
+        # (confirmed via Render logs 2026-08-17: repeated "Indian API rate
+        # limit / credits exhausted" warnings) -- not the per-request call
+        # in predict_trajectory.py, which was already removed. Post-listing
+        # price data (price_day1..10) is now bhavcopy_sync.py's job,
+        # running once/day for free off the bulk EOD file, so there's
+        # nothing left for this pass to usefully fetch from Indian API for
+        # an already-listed company -- skip it entirely rather than call
+        # fetch_and_upsert() only to have it internally no-op on ipoji and
+        # burn one Indian API call for nothing.
+        if live_fetch._already_listed(row.get("listing_date")):
+            continue
         try:
             live_fetch.fetch_and_upsert(name, ipoji_row=row)
         except Exception as e:  # noqa: BLE001 -- one bad company shouldn't stop the batch
@@ -82,8 +101,17 @@ def sync_active_ipos():
 
 
 def sync_recent_listings():
-    """Pass 2: DB rows that listed recently enough to still need price_dayN
-    filled in, but that IPO Guru's 'active' list may have already dropped."""
+    """Pass 2 -- DISABLED (2026-08-17): this pass existed ONLY to fill
+    price_dayN/current_price via Indian API for recently-listed companies.
+    bhavcopy_sync.py's daily run (Pass 5) now does exactly this job --
+    for free, in bulk, off the previous day's EOD bhavcopy file -- with
+    its own bounded Indian API gap-fill fallback (backfill_price_gaps())
+    for the rare row bhavcopy genuinely never got a row for. Calling this
+    pass too meant hitting Indian API for the SAME companies bhavcopy_sync
+    was already covering, every 10-15 min, which was the other half of
+    the quota-exhaustion problem alongside sync_active_ipos() above.
+    Function kept (unused by run_sync_once() below) rather than deleted,
+    in case it's ever needed for a manual one-off backfill."""
     conn = db.get_connection()
     try:
         cur = conn.cursor()
@@ -200,9 +228,12 @@ def run_sync_once():
     # one that actually scrapes ipoji.com and populates ipo_live_tracker.
     # sync_active_ipos() (below) only reads that table now; it needs this
     # pass to have run first in the same cycle, or it'll find nothing.
+    # FIX (2026-08-17): sync_recent_listings() (Pass 2) removed from the
+    # automatic cadence -- see that function's updated docstring.
+    # bhavcopy_sync() (Pass 5) now covers the same "fill price_dayN for
+    # recently-listed companies" job, for free and in bulk, once/day.
     sync_ipoji_open_ipos()
     sync_active_ipos()
-    sync_recent_listings()
     sync_gmp_trend()
     sync_bhavcopy()
 
