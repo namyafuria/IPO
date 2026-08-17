@@ -34,17 +34,18 @@ routers_live.py was uploaded and reconciled against (see below) -- point
 (b) from the original build is resolved. Two gaps remain, both because
 the underlying files still haven't been uploaded:
 
-  a) [NSE resolved, BSE round 2] NSE's fix from round 1 is confirmed
-     working in production (3,189 ISINs parsed on a real run). BSE's
-     Referer-header fix from round 1 was NOT enough -- same "not a zip"
-     result on the next real run. fetch_bse_bhavcopy() now adds a session
-     warm-up (plain GET to bseindia.com first, cookies carried into the
-     download request) since BSE's download endpoint is known to sit
-     behind a bot/WAF check. _fetch_zip_csv() also now logs the actual
-     content-type + a body preview on any "not a zip" result, so if this
-     STILL fails, the next run's logs will show what's actually coming
-     back instead of another guess. BSE's URL/column convention itself is
-     still not independently verified against your historical parser.
+  a) [NSE resolved, BSE round 3] NSE confirmed working in production
+     (3,189 ISINs parsed on a real run). BSE's round-1/round-2 fixes
+     (Referer header, session warm-up) never had a chance -- the real bug,
+     confirmed by fetching BSE's own BhavCopy.aspx page this session, is
+     that BSE discontinued its EQ_ISINCODE_<DDMMYY>.zip format on
+     2024-07-08 (same date as NSE) and moved to the same UDiFF standard.
+     fetch_bse_bhavcopy() now points at the real post-UDiFF URL (a plain
+     .CSV, not a .zip) -- see that function's own docstring for the two
+     independently-confirmed real URLs this was checked against, and the
+     one thing NOT independently confirmed (the exact column names, since
+     BSE's site blocked this session's attempts to fetch actual file
+     content -- only the surrounding page was reachable).
   b) [resolved] _trading_days_elapsed_batch is now imported directly from
      the real routers_live.py (reuses its NSE session calendar via
      pandas_market_calendars, same one /ipos/listed uses -- correctly
@@ -190,26 +191,58 @@ def fetch_nse_bhavcopy(date: datetime.date) -> dict[str, float]:
     return out
 
 
+def _fetch_text(url: str, extra_headers: dict | None = None, session=None) -> str | None:
+    """Plain (non-zipped) file fetch -- BSE's post-UDiFF bhavcopy is served
+    as a raw .CSV, unlike NSE's .csv.zip (see fetch_bse_bhavcopy())."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        **(extra_headers or {}),
+    }
+    requester = session or requests
+    resp = requester.get(url, timeout=30, headers=headers)
+    if resp.status_code != 200:
+        logger.warning("Bhavcopy fetch %s -> HTTP %s", url, resp.status_code)
+        return None
+    text = resp.text
+    if "<html" in text[:200].lower():
+        # Same failure mode as _fetch_zip_csv's BadZipFile branch -- an
+        # HTML page (block/challenge/404-shell) came back instead of data.
+        logger.warning(
+            "Bhavcopy fetch %s -> looks like an HTML page, not CSV data. "
+            "content-type=%r, first 200 chars: %r",
+            url, resp.headers.get("Content-Type"), text[:200],
+        )
+        return None
+    return text
+
+
 def fetch_bse_bhavcopy(date: datetime.date) -> dict[str, float]:
     """{isin: close_price} for BSE equities on `date`, keyed by ISIN where
     present.
 
-    FIX (2026-08-17), round 2: adding a Referer header alone did NOT fix
-    production's "not a zip" result (confirmed via a second real run --
-    same warning, same date, NSE succeeded for that date so it isn't a
-    holiday). Added a session warm-up instead: a plain GET to
-    https://www.bseindia.com/ first, then the download request reusing
-    that session's cookies -- BSE's download endpoint is known to sit
-    behind a bot/WAF check that a cookieless request fails even with a
-    normal-looking User-Agent/Referer. _fetch_zip_csv() above now also
-    logs the actual content-type + a body preview on failure, so if this
-    STILL doesn't work, the next run's logs will show what's actually
-    coming back (an HTML challenge page vs. something else) instead of
-    guessing a third time. URL/column convention itself still not
-    independently verified against your historical parser -- see module
-    docstring point (a)."""
-    import csv
-
+    FIX (2026-08-17), round 3: rounds 1-2 (Referer header, session
+    warm-up) never had a chance -- the diagnostic added in round 2
+    confirmed the URL itself was dead: BSE's `EQ_ISINCODE_<DDMMYY>.zip`
+    (this function's original URL) was discontinued on 2024-07-08, the
+    SAME date NSE discontinued its old format (confirmed by fetching BSE's
+    own /markets/MarketInfo/BhavCopy.aspx page this session, which lists
+    it in a table of discontinued files). Both exchanges moved to a common
+    "UDiFF" (Unified Distilled File Format) standard together. BSE's new
+    URL (confirmed via two independently search-indexed real examples this
+    session):
+        https://www.bseindia.com/download/BhavCopy/Equity/BhavCopy_BSE_CM_0_0_0_{YYYYMMDD}_F_0000.CSV
+    Note this is a PLAIN .CSV, not a .zip like NSE's (hence _fetch_text()
+    instead of _fetch_zip_csv()). Column names are ASSUMED to match NSE's
+    UDiFF columns (ISIN, SctySrs, ClsPric) since both exchanges standardized
+    on the same UDiFF spec together -- NOT independently confirmed by
+    actually downloading a real file and inspecting it this session (BSE's
+    site blocked this session's direct fetch attempts at the content
+    itself, only the surrounding page was reachable). If the next real run
+    shows 0 ISINs parsed despite a successful (non-HTML) fetch, that's the
+    column-name assumption being wrong -- check
+    https://www.bseindia.com/downloads1/UDiFF_BhavCopy_format.xlsx for the
+    real column layout."""
     session = requests.Session()
     try:
         session.get(
@@ -221,18 +254,24 @@ def fetch_bse_bhavcopy(date: datetime.date) -> dict[str, float]:
     except requests.RequestException as e:
         logger.warning("BSE warm-up request failed (continuing anyway): %s", e)
 
-    url = f"https://www.bseindia.com/download/BhavCopy/Equity/EQ_ISINCODE_{date.strftime('%d%m%y')}.zip"
-    text = _fetch_zip_csv(url, extra_headers={
-        "Referer": "https://www.bseindia.com/markets/equity/EQReports/BhavCopy.aspx",
+    import csv
+
+    url = (
+        f"https://www.bseindia.com/download/BhavCopy/Equity/"
+        f"BhavCopy_BSE_CM_0_0_0_{date.strftime('%Y%m%d')}_F_0000.CSV"
+    )
+    text = _fetch_text(url, extra_headers={
+        "Referer": "https://www.bseindia.com/markets/MarketInfo/BhavCopy.aspx",
         "Accept": "*/*",
     }, session=session)
     if not text:
         return {}
     out = {}
     for row in csv.DictReader(io.StringIO(text)):
-        isin = (row.get("ISIN_CODE") or row.get("ISIN") or "").strip()
-        close = row.get("CLOSE") or row.get("CLOSE_PRICE")
-        if isin and close:
+        isin = (row.get("ISIN") or "").strip()
+        series = (row.get("SctySrs") or "").strip().upper()
+        close = row.get("ClsPric")
+        if isin and close and (not series or series in _NSE_EQUITY_SERIES):
             try:
                 out[isin] = float(close)
             except ValueError:
