@@ -106,12 +106,18 @@ def _ipoji_partial_from_row(row: dict) -> dict:
     ipoji.poll_and_save_open_ipos() (see scheduler.py), so this is a pure
     reshape of data we already have.
 
-    NOTE: ipo_live_tracker does not currently store allotment_date or
-    listing_date -- ipoji.py's upsert_live_tracker() doesn't take those
-    params, even though ipoji.parse_details_page() does parse them off
-    the page. Left unset here rather than guessed; if these are needed,
-    ipo_live_tracker's schema and upsert_live_tracker() need to be
-    extended first to actually persist them."""
+    FIX (2026-08-17): listing_date/allotment_date used to be left unset
+    here because ipo_live_tracker didn't store them -- true as of the
+    2026-08-15 fix log above, but ipoji.py's upsert_live_tracker() gained
+    both columns on 2026-08-16 and this mapping was never updated to
+    match. Confirmed as the reason companies could never trip
+    _already_listed() (which reads existing["listing_date"] off
+    ipo_master_records, not ipo_live_tracker) via this path: with
+    listing_date always dropped here, db.upsert_record() never persisted
+    it, so _already_listed() stayed False forever for a given company no
+    matter how long ago it actually listed -- gating out the Indian API
+    fetch, price_dayN, and the "freeze pre-listing data" branch
+    indefinitely, not just once."""
     return {
         "company_name": row.get("company_name"),
         "data_source": "ipoji",
@@ -119,6 +125,8 @@ def _ipoji_partial_from_row(row: dict) -> dict:
         "gmp_percent": row.get("current_gmp_percent"),
         "open_date": row.get("open_date"),
         "close_date": row.get("close_date"),
+        "listing_date": row.get("listing_date"),
+        "allotment_date": row.get("allotment_date"),
         "subscription_total": row.get("current_subscription_total"),
         "subscription_qib": row.get("current_subscription_qib"),
         "subscription_hni": row.get("current_subscription_hni"),
