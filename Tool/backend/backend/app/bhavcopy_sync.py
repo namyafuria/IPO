@@ -34,17 +34,17 @@ routers_live.py was uploaded and reconciled against (see below) -- point
 (b) from the original build is resolved. Two gaps remain, both because
 the underlying files still haven't been uploaded:
 
-  a) NSE/BSE bhavcopy URL format + column names / BSE-preferred conflict
-     logic: the "exact parsing logic your historical bhavcopy_2018_2023.db
-     backfills already validated" that item 1 asked to reuse was not
-     uploaded, so fetch_nse_bhavcopy()/fetch_bse_bhavcopy() below use the
-     standard NSE `cm<DDMMMYYYY>bhav.csv` (ISIN, SYMBOL, CLOSE) and BSE
-     `EQ_ISINCODE_<DDMMYY>.CSV` (ISIN_CODE/SC_CODE, SC_NAME, CLOSE) column
-     conventions rather than your validated ones. Please diff this against
-     that backfill script before pointing it at the real URLs -- column
-     names in particular have drifted between NSE bhavcopy format
-     vintages before (see project plan §67's note on the old vs new BSE
-     format).
+  a) [partially resolved] NSE's URL/columns were wrong (confirmed via
+     production logs: HTTP 404) -- NSE discontinued the old `cm<DATE>
+     bhav.csv.zip` path on 2024-07-08 (Circular 62424) and switched to the
+     "CM-UDiFF Common Bhavcopy Final" format. fetch_nse_bhavcopy() now uses
+     that real URL/column set (see its own docstring). BSE's fetch got a
+     Referer header added (its "not a zip" response looked like an
+     HTML page being returned instead of the file, which a missing
+     Referer/session context commonly causes) but its URL/column
+     convention itself is still NOT independently verified against your
+     historical parser -- if it's still failing after this, see
+     fetch_bse_bhavcopy()'s docstring for the next thing to check.
   b) [resolved] _trading_days_elapsed_batch is now imported directly from
      the real routers_live.py (reuses its NSE session calendar via
      pandas_market_calendars, same one /ipos/listed uses -- correctly
@@ -110,8 +110,9 @@ def _previous_trading_day(as_of: datetime.date | None = None) -> datetime.date:
 
 
 # --- fetch + parse ---------------------------------------------------------
-def _fetch_zip_csv(url: str) -> str | None:
-    resp = requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+def _fetch_zip_csv(url: str, extra_headers: dict | None = None) -> str | None:
+    headers = {"User-Agent": "Mozilla/5.0", **(extra_headers or {})}
+    resp = requests.get(url, timeout=30, headers=headers)
     if resp.status_code != 200:
         logger.warning("Bhavcopy fetch %s -> HTTP %s", url, resp.status_code)
         return None
@@ -120,20 +121,41 @@ def _fetch_zip_csv(url: str) -> str | None:
             name = zf.namelist()[0]
             return zf.read(name).decode("utf-8", errors="replace")
     except zipfile.BadZipFile:
-        logger.warning("Bhavcopy fetch %s -> not a zip (holiday / no file yet?)", url)
+        logger.warning("Bhavcopy fetch %s -> not a zip (holiday / no file yet? or an HTML "
+                        "error/login page instead of the file)", url)
         return None
 
 
+# Equity cash-market series codes worth keeping a close price for. Excludes
+# non-equity series NSE's combined UDIFF file also carries (debt, ETFs use
+# their own series too but ETF closes aren't useful here). ASSUMPTION --
+# not verified against your validated historical parser (see module
+# docstring point (a)); EQ/BE/BZ are the standard NSE mainboard+SME/trade-
+# to-trade equity series codes, but worth double-checking against a real
+# downloaded file before trusting this blindly.
+_NSE_EQUITY_SERIES = {"EQ", "BE", "BZ", "SM", "ST"}
+
+
 def fetch_nse_bhavcopy(date: datetime.date) -> dict[str, float]:
-    """{isin: close_price} for NSE equities on `date`. See module
-    docstring point (a) -- URL/column convention not re-verified this
-    session against your validated historical parser."""
+    """{isin: close_price} for NSE equities on `date`.
+
+    FIX (2026-08-17): the old `cm<DDMMMYYYY>bhav.csv.zip` URL under
+    /content/historical/EQUITIES/ was DISCONTINUED by NSE on 2024-07-08
+    (NSE Circular 62424) -- confirmed via web search this session, and
+    matches the HTTP 404 seen in production logs. NSE switched to the
+    "CM-UDiFF Common Bhavcopy Final" format/URL instead:
+        https://nsearchives.nseindia.com/content/cm/BhavCopy_NSE_CM_0_0_0_{YYYYMMDD}_F_0000.csv.zip
+    with a different column set (ISIN, TckrSymb, SctySrs, ClsPric, among
+    others) than the old SYMBOL/SERIES/CLOSE layout this function used to
+    assume. Filters to _NSE_EQUITY_SERIES so index/derivative-adjacent rows
+    in the combined file don't get mixed into the equity close-price map.
+    Still worth a smoke test against a real recent date before fully
+    trusting this -- see module docstring point (a)."""
     import csv
 
     url = (
-        f"https://nsearchives.nseindia.com/content/historical/EQUITIES/"
-        f"{date.year}/{date.strftime('%b').upper()}/"
-        f"cm{date.strftime('%d%b%Y').upper()}bhav.csv.zip"
+        f"https://nsearchives.nseindia.com/content/cm/"
+        f"BhavCopy_NSE_CM_0_0_0_{date.strftime('%Y%m%d')}_F_0000.csv.zip"
     )
     text = _fetch_zip_csv(url)
     if not text:
@@ -141,8 +163,9 @@ def fetch_nse_bhavcopy(date: datetime.date) -> dict[str, float]:
     out = {}
     for row in csv.DictReader(io.StringIO(text)):
         isin = (row.get("ISIN") or "").strip()
-        close = row.get("CLOSE") or row.get("CLOSE_PRICE")
-        if isin and close:
+        series = (row.get("SctySrs") or "").strip().upper()
+        close = row.get("ClsPric")
+        if isin and close and series in _NSE_EQUITY_SERIES:
             try:
                 out[isin] = float(close)
             except ValueError:
@@ -153,11 +176,26 @@ def fetch_nse_bhavcopy(date: datetime.date) -> dict[str, float]:
 
 def fetch_bse_bhavcopy(date: datetime.date) -> dict[str, float]:
     """{isin: close_price} for BSE equities on `date`, keyed by ISIN where
-    present. See module docstring point (a) -- same caveat as NSE."""
+    present.
+
+    FIX (2026-08-17): added a Referer header -- BSE's download endpoint has
+    been known to return an HTML page (not the file) to requests that don't
+    look like they came from a browser session on bseindia.com, which
+    would explain the "not a zip" warning seen in production logs (as
+    opposed to a real holiday/no-file-yet case). URL/column convention
+    otherwise UNCHANGED from before and still NOT independently re-verified
+    against your validated historical parser this session -- see module
+    docstring point (a). If this still fails after the header fix, BSE's
+    URL/date-suffix format itself may have changed (some sources suggest a
+    settlement-type suffix like `_T0` was added at some point) and needs a
+    real look at a fresh manual download from bseindia.com to confirm."""
     import csv
 
     url = f"https://www.bseindia.com/download/BhavCopy/Equity/EQ_ISINCODE_{date.strftime('%d%m%y')}.zip"
-    text = _fetch_zip_csv(url)
+    text = _fetch_zip_csv(url, extra_headers={
+        "Referer": "https://www.bseindia.com/markets/equity/EQReports/BhavCopy.aspx",
+        "Accept": "*/*",
+    })
     if not text:
         return {}
     out = {}
@@ -334,8 +372,25 @@ def backfill_price_gaps() -> dict:
                 finally:
                     conn.close()
             except indianapi.IndianAPIError as e:
-                logger.warning("Gap-fill Indian API call failed for %r/%s: %s", row["company_name"], column, e)
+                # FIX (2026-08-17): production logs showed this pass making
+                # (and losing) 7 individual Indian API calls in one run, all
+                # failing with the SAME "rate limit / credits exhausted"
+                # error -- that error is account-wide, not per-company, so
+                # once it's seen once, every remaining call this run is
+                # guaranteed to fail too. Stop the whole pass immediately
+                # instead of wasting the rest of the due companies' one
+                # attempt each -- they'll get picked up on the next run once
+                # quota is available again, same as if this run had never
+                # happened.
+                logger.warning(
+                    "Gap-fill Indian API call failed for %r/%s: %s -- stopping this "
+                    "run early (quota is account-wide, not per-company).",
+                    row["company_name"], column, e,
+                )
                 failures += 1
+                result = {"filled": filled, "skipped_not_due": skipped, "api_failures": failures}
+                logger.info("bhavcopy_sync.backfill_price_gaps: %s (stopped early)", result)
+                return result
             break  # one horizon (and one API call) per company per run, oldest-due first
 
     result = {"filled": filled, "skipped_not_due": skipped, "api_failures": failures}
