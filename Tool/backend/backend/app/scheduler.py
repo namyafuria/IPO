@@ -28,7 +28,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from . import config, db, live_fetch
 from .gmp_sync import run_gmp_sync
 from .fetchers import ipoji
-from .bhavcopy_sync import run_bhavcopy_sync, backfill_price_gaps
+from .bhavcopy_sync import run_bhavcopy_sync, backfill_price_gaps, get_trackable_companies
 from .trajectory_predictions_store import save_trajectory_prediction
 from .predict_trajectory import TrajectoryPredictionError
 
@@ -232,41 +232,96 @@ def sync_bhavcopy():
     # other pass in this module.
     names = set((sync_result or {}).get("updated_companies", []))
     names |= set((gap_result or {}).get("filled_companies", []))
-    saved, skipped, failed = 0, 0, 0
-    if names:
-        conn = db.get_connection()
-        try:
-            for name in sorted(names):
-                # Canonicalize to the exact company_name the row is
-                # actually stored under -- save_trajectory_prediction()
-                # is a straight lookup-by-name call into
-                # predict_trajectory_smart_for_company(), so a mismatched
-                # name here would either miss the row entirely or (worse)
-                # save under a second, slightly different name than the
-                # one the read path looks up.
-                record, exact = db.find_company(name)
-                if record is None:
-                    skipped += 1
-                    logger.warning(
-                        "Trajectory save hook: %r updated by bhavcopy but "
-                        "find_company() couldn't resolve it -- skipping.", name,
-                    )
-                    continue
-                try:
-                    save_trajectory_prediction(conn, record.company_name)
-                    saved += 1
-                except TrajectoryPredictionError as e:
-                    failed += 1
-                    logger.warning(
-                        "Trajectory save hook: prediction failed for %r: %s",
-                        record.company_name, e,
-                    )
-        finally:
-            conn.close()
-    trajectory_result = {"saved": saved, "skipped_unresolved": skipped, "failed": failed}
+    trajectory_result = save_trajectory_predictions_for(names, reason="updated by bhavcopy")
     logger.info("Bhavcopy-triggered trajectory saves: %s", trajectory_result)
 
     return {"sync": sync_result, "gap_fill": gap_result, "trajectory_saves": trajectory_result}
+
+
+def save_trajectory_predictions_for(names, reason: str = "requested") -> dict:
+    """Shared helper: for each company name given, resolves it via
+    db.find_company() and calls save_trajectory_prediction() to compute +
+    persist a fresh trajectory prediction row. Same 'one bad company
+    shouldn't stop the batch' resilience as every other pass in this
+    module. `reason` is just for the log line so callers (the routine
+    bhavcopy hook vs. the one-off backfill_all_trajectory_predictions()
+    below) are distinguishable in logs.
+
+    Used by BOTH:
+      - sync_bhavcopy()'s routine hook above -- called with only the
+        companies bhavcopy actually touched this cycle, so predictions
+        stay in sync with real price data and nothing else is
+        recomputed for no reason.
+      - backfill_all_trajectory_predictions() below -- a one-off, called
+        with EVERY currently-trackable company regardless of whether
+        bhavcopy touched them today or a prediction already exists, to
+        seed the whole Listed tab with a cached row immediately instead
+        of waiting for each company's next natural bhavcopy touch."""
+    saved, skipped, failed = 0, 0, 0
+    names = sorted(set(names))
+    if not names:
+        return {"saved": saved, "skipped_unresolved": skipped, "failed": failed}
+    conn = db.get_connection()
+    try:
+        for name in names:
+            # FIX (2026-08-18): deliberately NOT db.find_company() here.
+            # Both callers of this function pass names sourced straight
+            # from a prior ipo_master_records.company_name read (bhavcopy's
+            # get_trackable_companies() rows) -- already exact, canonical
+            # strings, not typed/external input. find_company()'s fuzzy
+            # normalize+substring matching over ALL rows could return a
+            # DIFFERENT row than this exact one on a normalized-name
+            # collision (a known unresolved case in this project -- see
+            # Accent Microcell/AMIC Forging), silently saving a fresh
+            # prediction under the wrong company. An exact existence check
+            # has no such ambiguity -- see db.company_exists_exact()'s
+            # docstring.
+            if not db.company_exists_exact(name):
+                skipped += 1
+                logger.warning(
+                    "Trajectory save (%s): %r no longer in ipo_master_records "
+                    "(exact match) -- skipping.", reason, name,
+                )
+                continue
+            try:
+                save_trajectory_prediction(conn, name)
+                saved += 1
+            except TrajectoryPredictionError as e:
+                failed += 1
+                logger.warning(
+                    "Trajectory save (%s): prediction failed for %r: %s",
+                    reason, name, e,
+                )
+    finally:
+        conn.close()
+    return {"saved": saved, "skipped_unresolved": skipped, "failed": failed}
+
+
+def backfill_all_trajectory_predictions() -> dict:
+    """ONE-OFF, not part of the automatic cadence -- not wired into
+    run_sync_once() or start_scheduler(), call it manually (see the
+    standalone script) exactly once to seed the cache.
+
+    Computes + persists a trajectory prediction right now for EVERY
+    company currently inside its Day1-10 window (get_trackable_companies()
+    -- the same Day1-10-inclusive window run_bhavcopy_sync() uses),
+    regardless of whether bhavcopy touched that company's price today or
+    a prediction already exists for it. This is what makes the WHOLE
+    Listed tab start reading cached rows instantly today, instead of each
+    company only getting its first cached row the next time its own
+    price_dayN happens to update.
+
+    Safe to run more than once -- save_trajectory_prediction() is
+    insert-only/versioned (never overwrites), so a repeat run just adds
+    another row per company rather than corrupting anything. After this
+    one-off, the ROUTINE path (sync_bhavcopy()'s hook, above) takes back
+    over and only re-saves a company when its bhavcopy price actually
+    changes -- this function does not change that behavior."""
+    companies, _ = get_trackable_companies()
+    names = [c["company_name"] for c in companies]
+    result = save_trajectory_predictions_for(names, reason="one-off backfill")
+    logger.info("Trajectory backfill (all %d trackable companies): %s", len(names), result)
+    return result
 
 
 def run_sync_once():

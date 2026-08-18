@@ -124,6 +124,31 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 
+def company_exists_exact(company_name: str) -> bool:
+    """Exact-string existence check against ipo_master_records.company_name
+    -- deliberately NOT normalize_name()/strict_match()-based like
+    find_company(). For callers that already hold a canonical company_name
+    pulled straight from a prior query against this same table (e.g.
+    bhavcopy_sync.get_trackable_companies() rows, in
+    scheduler.save_trajectory_predictions_for()) -- re-running that value
+    through find_company()'s fuzzy normalize/substring matching would add
+    real risk for zero benefit: if two rows ever normalize to the same
+    string (a known unresolved case in this project -- see the Accent
+    Microcell/AMIC Forging SC_CODE conflict), find_company() can return a
+    DIFFERENT row than the one the caller actually meant, silently
+    attaching a fresh save to the wrong company. An exact string match has
+    no such ambiguity -- it either is that literal row or it isn't."""
+    conn = get_connection()
+    try:
+        cur = conn.execute(
+            "SELECT 1 FROM ipo_master_records WHERE company_name = ? LIMIT 1",
+            (company_name,),
+        )
+        return cur.fetchone() is not None
+    finally:
+        conn.close()
+
+
 def find_company(query: str) -> tuple[Optional[IPORecord], bool]:
     """Returns (record, exact_match). record is None if nothing matched --
     see strict_match()'s docstring above for why the old difflib-based
