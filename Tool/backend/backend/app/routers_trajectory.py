@@ -29,13 +29,51 @@ Error mapping, matching the existing predict.py/predict_trajectory.py
     in logs rather than being silently reshaped into a 422
 """
 
+"""
+routers_trajectory.py -- exposes the trajectory prediction over HTTP.
+
+FIX (2026-08-18): this route no longer calls
+predict_trajectory_smart_for_company() directly on every request. Prices
+now arrive once/day via bhavcopy_sync.py, which computes and persists a
+trajectory prediction right after each company's price_dayN lands (see
+scheduler.py's sync_bhavcopy() trajectory-save hook) -- so the normal
+request path here just reads that saved row via
+get_latest_trajectory_prediction(), which is instant regardless of how
+slow the underlying model computation is.
+
+EXCEPTION: subscription_override/gmp_override (a still-open issue's live,
+not-yet-final numbers) can never be pre-cached -- there's no daily job
+that knows what live number the caller has in hand right now. So a
+request that passes either override still computes live, same as before.
+This is expected to be a rare, user-triggered case (checking "what if"
+before the issue closes), not the routine path, so it's fine for it to
+stay slow.
+
+Route: GET /api/predict_trajectory_smart/{name}
+  Query params (both optional, force a live compute when either is set):
+    subscription_override: float
+    gmp_override: float
+
+Error mapping:
+  - company not found in the DB -> 404
+  - company found, but no saved prediction exists yet (freshly listed,
+    hasn't hit a bhavcopy cycle yet) -> 422, "not yet computed" -- this
+    is the same honest-empty-state decision as the pre_listing-mode
+    freeze, not a fallback to an on-demand compute
+  - every other TrajectoryPredictionError (only reachable via the
+    override live-compute path now) -> 422
+  - anything unexpected -> let FastAPI's default 500 handler take it
+"""
+
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 
+from . import db
 from .predict_trajectory import (
     predict_trajectory_smart_for_company,
     TrajectoryPredictionError,
 )
+from .trajectory_predictions_store import get_latest_trajectory_prediction
 
 router = APIRouter()
 
@@ -43,33 +81,50 @@ router = APIRouter()
 @router.get("/api/predict_trajectory_smart/{name}")
 def get_predict_trajectory_smart(
     name: str,
-    # Query param names deliberately match "subscription"/"gmp", NOT
-    # "subscription_override"/"gmp_override" -- every other endpoint in
-    # api.js (getPrediction, getTrajectory, and this one) already sends
-    # those two short names. Aliasing here (rather than renaming
-    # api.js) keeps this consistent with the existing convention and
-    # avoids repeating the exact silent-param-mismatch bug fixed in
-    # project plan §73 (api.js sent subscription/gmp, the route expected
-    # subscription_override/gmp_override -- FastAPI just silently treated
-    # them as absent since both are Optional, no error, no override
-    # ever applied).
     subscription_override: Optional[float] = Query(
         None, alias="subscription",
-        description="Current live subscription multiple, for a still-open issue.",
+        description="Current live subscription multiple, for a still-open issue. "
+                     "Forces a live compute instead of reading the cached prediction.",
     ),
     gmp_override: Optional[float] = Query(
         None, alias="gmp",
-        description="Current live GMP percent.",
+        description="Current live GMP percent. Forces a live compute instead of "
+                     "reading the cached prediction.",
     ),
 ):
+    record, _exact = db.find_company(name)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"No match found for {name!r} in the database.")
+
+    # Override path -- can't be served from cache, same live-compute call
+    # this route used to make unconditionally.
+    if subscription_override is not None or gmp_override is not None:
+        try:
+            return predict_trajectory_smart_for_company(
+                record.company_name,
+                subscription_override=subscription_override,
+                gmp_override=gmp_override,
+            )
+        except TrajectoryPredictionError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+
+    # Normal path -- read the last-saved row from the bhavcopy-triggered
+    # hook. No live compute here even if this returns None: a freshly
+    # listed company simply hasn't had a bhavcopy cycle save one yet, and
+    # that's an honest "not yet computed" state, not an error worth
+    # silently papering over with a slow on-demand fallback.
+    conn = db.get_connection()
     try:
-        return predict_trajectory_smart_for_company(
-            name,
-            subscription_override=subscription_override,
-            gmp_override=gmp_override,
+        cached = get_latest_trajectory_prediction(conn, record.company_name)
+    finally:
+        conn.close()
+
+    if cached is None:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"No trajectory prediction has been computed yet for {record.company_name!r} -- "
+                "it will be filled in after the next daily bhavcopy sync."
+            ),
         )
-    except TrajectoryPredictionError as e:
-        message = str(e)
-        if message.startswith("No match found for"):
-            raise HTTPException(status_code=404, detail=message)
-        raise HTTPException(status_code=422, detail=message)
+    return cached

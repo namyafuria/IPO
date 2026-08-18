@@ -29,6 +29,8 @@ from . import config, db, live_fetch
 from .gmp_sync import run_gmp_sync
 from .fetchers import ipoji
 from .bhavcopy_sync import run_bhavcopy_sync, backfill_price_gaps
+from .trajectory_predictions_store import save_trajectory_prediction
+from .predict_trajectory import TrajectoryPredictionError
 
 logger = logging.getLogger("ipo_tool.scheduler")
 
@@ -221,7 +223,50 @@ def sync_bhavcopy():
     except Exception as e:  # noqa: BLE001
         logger.warning("Bhavcopy gap-fill failed: %s", e)
 
-    return {"sync": sync_result, "gap_fill": gap_result}
+    # Trajectory-prediction save hook: recompute + persist a fresh
+    # trajectory prediction for exactly the companies that got a NEW
+    # price_dayN cell this cycle -- from either the main sync or the
+    # gap-fill fallback -- so the frontend can switch to reading the
+    # last-saved row instead of computing on request. Same "one bad
+    # company shouldn't stop the batch" resilience convention as every
+    # other pass in this module.
+    names = set((sync_result or {}).get("updated_companies", []))
+    names |= set((gap_result or {}).get("filled_companies", []))
+    saved, skipped, failed = 0, 0, 0
+    if names:
+        conn = db.get_connection()
+        try:
+            for name in sorted(names):
+                # Canonicalize to the exact company_name the row is
+                # actually stored under -- save_trajectory_prediction()
+                # is a straight lookup-by-name call into
+                # predict_trajectory_smart_for_company(), so a mismatched
+                # name here would either miss the row entirely or (worse)
+                # save under a second, slightly different name than the
+                # one the read path looks up.
+                record, exact = db.find_company(name)
+                if record is None:
+                    skipped += 1
+                    logger.warning(
+                        "Trajectory save hook: %r updated by bhavcopy but "
+                        "find_company() couldn't resolve it -- skipping.", name,
+                    )
+                    continue
+                try:
+                    save_trajectory_prediction(conn, record.company_name)
+                    saved += 1
+                except TrajectoryPredictionError as e:
+                    failed += 1
+                    logger.warning(
+                        "Trajectory save hook: prediction failed for %r: %s",
+                        record.company_name, e,
+                    )
+        finally:
+            conn.close()
+    trajectory_result = {"saved": saved, "skipped_unresolved": skipped, "failed": failed}
+    logger.info("Bhavcopy-triggered trajectory saves: %s", trajectory_result)
+
+    return {"sync": sync_result, "gap_fill": gap_result, "trajectory_saves": trajectory_result}
 
 
 def run_sync_once():

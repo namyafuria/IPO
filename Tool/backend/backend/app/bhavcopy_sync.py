@@ -403,9 +403,11 @@ def run_bhavcopy_sync(target_date: datetime.date | None = None) -> dict:
     companies, elapsed_by_date = get_trackable_companies(as_of=date)
     if not companies:
         logger.info("bhavcopy_sync: no trackable companies this cycle.")
-        return {"date": date.isoformat(), "updated": 0, "no_bhavcopy_row": 0, "no_column_due": 0}
+        return {"date": date.isoformat(), "updated": 0, "no_bhavcopy_row": 0,
+                "no_column_due": 0, "updated_companies": []}
 
     updated, no_row, no_column = 0, 0, 0
+    updated_companies = set()
     conn = db.get_connection()
     try:
         for row in companies:
@@ -423,13 +425,15 @@ def run_bhavcopy_sync(target_date: datetime.date | None = None) -> dict:
                     continue
                 if _update_if_null(conn, row["company_name"], column, price):
                     updated += 1
+                    updated_companies.add(row["company_name"])
             except Exception as e:  # noqa: BLE001 -- one bad company shouldn't stop the batch
                 logger.warning("bhavcopy_sync failed for %r: %s", row["company_name"], e)
         conn.commit()
     finally:
         conn.close()
 
-    result = {"date": date.isoformat(), "updated": updated, "no_bhavcopy_row": no_row, "no_column_due": no_column}
+    result = {"date": date.isoformat(), "updated": updated, "no_bhavcopy_row": no_row,
+              "no_column_due": no_column, "updated_companies": sorted(updated_companies)}
     logger.info("bhavcopy_sync %s: %s", date.isoformat(), result)
     return result
 
@@ -445,9 +449,10 @@ def backfill_price_gaps() -> dict:
     today = datetime.date.today()
     companies, _ = get_trackable_companies(as_of=today)
     if not companies:
-        return {"filled": 0, "skipped_not_due": 0, "api_failures": 0}
+        return {"filled": 0, "skipped_not_due": 0, "api_failures": 0, "filled_companies": []}
 
     filled, skipped, failures = 0, 0, 0
+    filled_companies = set()
     for row in companies:
         listing_date = datetime.date.fromisoformat(row["listing_date"][:10])
         for elapsed_due, column in sorted(HORIZON_COLUMNS.items()):
@@ -474,6 +479,7 @@ def backfill_price_gaps() -> dict:
                 try:
                     if _update_if_null(conn, row["company_name"], column, price):
                         filled += 1
+                        filled_companies.add(row["company_name"])
                     conn.commit()
                 finally:
                     conn.close()
@@ -494,11 +500,13 @@ def backfill_price_gaps() -> dict:
                     row["company_name"], column, e,
                 )
                 failures += 1
-                result = {"filled": filled, "skipped_not_due": skipped, "api_failures": failures}
+                result = {"filled": filled, "skipped_not_due": skipped, "api_failures": failures,
+                           "filled_companies": sorted(filled_companies)}
                 logger.info("bhavcopy_sync.backfill_price_gaps: %s (stopped early)", result)
                 return result
             break  # one horizon (and one API call) per company per run, oldest-due first
 
-    result = {"filled": filled, "skipped_not_due": skipped, "api_failures": failures}
+    result = {"filled": filled, "skipped_not_due": skipped, "api_failures": failures,
+              "filled_companies": sorted(filled_companies)}
     logger.info("bhavcopy_sync.backfill_price_gaps: %s", result)
     return result
