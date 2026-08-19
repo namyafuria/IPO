@@ -1,0 +1,5 @@
+company_name,db_listing_date,db_category,match_source,nse_symbol,bse_script_code,matched_name,corroborated_by
+Shiprocket Ltd.,,Mainboard,BSE_MAIN,,544871,Shiprocket Limited,name only (weak — flag for manual review)
+Milky Mist Dairy Food Ltd.,,Mainboard,BSE_MAIN,,544868,Milky Mist Dairy Food Limited,name only (weak — flag for manual review)
+National Securities Depository Ltd (NSDL),2025-08-06,Mainboard,BSE_MAIN,,544467,National Securities Depository Limited,name only (weak — flag for manual review)
+Vodafone Idea Ltd,2024-04-25,Mainboard,BSE_MAIN,,532822,VODAFONE IDEA  LIMITED,name only (weak — flag for manual review)

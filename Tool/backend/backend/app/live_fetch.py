@@ -75,6 +75,47 @@ source's data from being saved.
    time), this was the direct cause of both an oversized manual-sync
    duration and burning through the Indian API's 500-calls/month quota in
    a single run.
+
+--- FIX LOG (2026-08-18) -- item 1 (Sham Foam / Milky Mist "NO RESULT") ---
+7. _ipoji_partial()'s on-demand lookup used to be an EXACT string match:
+     SELECT * FROM ipo_live_tracker WHERE company_name = ?
+   against whatever the user typed into the search box (main.py's
+   /api/company/{name} passes `name` straight through, unmodified, into
+   fetch_and_upsert() -> here). But ipo_live_tracker.company_name is
+   whatever ipoji.py's resolve_company_name() wrote for that row -- the
+   real DB-canonical name if find_company() matched one at poll time, else
+   a raw slug-derived guess (e.g. "sham-foam-ipo" -> "Sham Foam") if it
+   didn't. For a company that has never made it into ipo_master_records
+   (exactly the Sham Foam / Milky Mist case -- see fix plan item 1), that
+   guessed name has no reason to match whatever string the user searches
+   for ("Sham Foam Ltd.", "Sham Foam", etc.) character-for-character, so
+   this lookup silently returned zero rows even when ipo_live_tracker
+   *did* hold a real, populated row for that company (confirmed: ipoji.py's
+   mark_as_listed() flips status in place rather than deleting on delisting
+   from the "current" set, so an already-listed SME IPO's row is still
+   there to find). Combined with db.find_company() also missing (nothing
+   in ipo_master_records yet), fetch_and_upsert() had both sources come
+   back empty and raised LookupError -- the exact "no match in database or
+   live sources" message reported for both companies.
+
+   Fixed by replacing the raw exact-match SQL with the same two-pass
+   normalize_name()-then-strict_match() approach db.find_company() already
+   uses for ipo_master_records -- now applied to ipo_live_tracker's rows
+   too, via the shared functions in db.py, so a search-box name and a
+   slug-guessed name resolve to the same company the same way a search-box
+   name and a canonical DB name already did.
+
+8. Related gap, fixed alongside #7: even once ipoji_partial correctly
+   found the row, the Indian API gate below still checked only
+   existing.get("listing_date") -- i.e. whatever ipo_master_records had
+   *before* this call. For a company search that just pulled in a real
+   listing_date via ipoji_partial for the first time (this exact case),
+   that meant Indian API's post-listing fetch (day1-10 price trail) would
+   still be skipped on this call and only pick up on a second call, after
+   the ipoji-sourced listing_date had been persisted by upsert_record().
+   Now gates on the freshly-merged listing_date too, so a first-ever
+   lookup of an already-listed company gets everything available in one
+   call rather than needing a follow-up refresh.
 """
 
 import datetime
@@ -117,7 +158,26 @@ def _ipoji_partial_from_row(row: dict) -> dict:
     it, so _already_listed() stayed False forever for a given company no
     matter how long ago it actually listed -- gating out the Indian API
     fetch, price_dayN, and the "freeze pre-listing data" branch
-    indefinitely, not just once."""
+    indefinitely, not just once.
+
+    FIX (2026-08-18) -- item 2 (ISIN / NSE symbol on Listed cards): same
+    bug class as the fix above -- isin/nse_symbol/bse_script_code were
+    simply never in this mapping, so even on the rare row where
+    ipo_live_tracker happened to carry one of them, it silently never made
+    it into ipo_master_records. Added as plain .get()s, same as every
+    other field here: if ipo_live_tracker doesn't have a given column
+    (unconfirmed this session -- ipoji.py wasn't uploaded, so it's unknown
+    whether ipoji.com's live page exposes ISIN/symbol pre-listing at all),
+    this just returns None per key and _merge()'s never-overwrite-with-
+    None rule makes it a no-op, same as any other field this source
+    doesn't have for a given company. Costs nothing either way, and starts
+    flowing data through automatically the day ipo_live_tracker does carry
+    it. NOT sufficient on its own to close item 2 -- still needed:
+    (a) confirm isin/nse_symbol/bse_script_code are actually in
+    schemas.IPO_COLUMNS (schemas.py not uploaded this session), and
+    (b) confirm the nse_symbol column exists on ipo_master_records itself
+    (bhavcopy_sync.py's PRAGMA check suggests it may not yet -- see that
+    file's FIX LOG point (f))."""
     return {
         "company_name": row.get("company_name"),
         "data_source": "ipoji",
@@ -132,6 +192,9 @@ def _ipoji_partial_from_row(row: dict) -> dict:
         "subscription_hni": row.get("current_subscription_hni"),
         "subscription_rii": row.get("current_subscription_rii"),
         "issue_category": row.get("issue_category"),
+        "isin": row.get("isin"),
+        "nse_symbol": row.get("nse_symbol"),
+        "bse_script_code": row.get("bse_script_code"),
     }
 
 
@@ -141,27 +204,50 @@ def _ipoji_partial(company_name: str) -> dict:
     loop (e.g. a user searching for a company we don't have yet), so no
     ipo_live_tracker row was handed to us directly.
 
-    Looks the company up in ipo_live_tracker by name -- a local DB read,
-    NOT a network fetch. Replaces the old _ipogyani_partial(), which used
-    to hit ipogyani.com directly on every call; ipoji.com is only ever
-    scraped by sync_ipoji_open_ipos()'s hourly poll now (see
-    scheduler.py), and every other caller just reads what that poll
-    already saved. Returns {} if the company isn't currently tracked as
-    open (never appeared on ipoji's open pages, or it closed and was
-    dropped -- see ipoji.remove_from_live_tracker())."""
+    Looks the company up in ipo_live_tracker -- a local DB read, NOT a
+    network fetch. Replaces the old _ipogyani_partial(), which used to hit
+    ipogyani.com directly on every call; ipoji.com is only ever scraped by
+    sync_ipoji_open_ipos()'s hourly poll now (see scheduler.py), and every
+    other caller just reads what that poll already saved. Returns {} if
+    the company isn't tracked at all (never appeared on ipoji's open
+    pages).
+
+    FIX (2026-08-18, see FIX LOG 7 above): matching used to be a raw exact
+    string match on company_name. ipo_live_tracker's company_name is
+    resolve_company_name()'s best guess at poll time (the real DB name if
+    ipo_master_records already had one, otherwise a slug-derived guess --
+    see ipoji.py) -- for a company not yet in ipo_master_records, that
+    guess has no reason to match what someone types into the search box.
+    Now does the same two-pass match db.find_company() uses for
+    ipo_master_records (normalize_name() exact match, then strict_match()
+    fallback), applied here to ipo_live_tracker's rows via the shared
+    functions in db.py, so both tables resolve a search-box name the same
+    way."""
     try:
         conn = db.get_connection()
     except Exception as e:
         logger.warning("Could not open DB connection for ipoji lookup of %r: %s", company_name, e)
         return {}
     try:
-        cur = conn.execute("SELECT * FROM ipo_live_tracker WHERE company_name = ?", (company_name,))
-        row = cur.fetchone()
+        cur = conn.execute("SELECT * FROM ipo_live_tracker")
+        rows = [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
-    if row is None:
+    if not rows:
         return {}
-    return _ipoji_partial_from_row(dict(row))
+
+    target = db.normalize_name(company_name)
+    for row in rows:
+        if db.normalize_name(row.get("company_name") or "") == target:
+            return _ipoji_partial_from_row(row)
+
+    names = [row.get("company_name") or "" for row in rows]
+    matched_name = db.strict_match(company_name, names)
+    if matched_name is not None:
+        row = next(r for r in rows if r.get("company_name") == matched_name)
+        return _ipoji_partial_from_row(row)
+
+    return {}
 
 
 def _already_listed(listing_date: str | None) -> bool:
@@ -243,9 +329,18 @@ def fetch_and_upsert(company_name: str, ipoji_row: dict | None = None) -> dict:
     # this was burning 70+ Indian API calls per sync run against a
     # 500/month quota, on data the module itself says isn't meaningful yet
     # for those companies.
+    # FIX (2026-08-18, see FIX LOG 8 above): listing_date may have just
+    # arrived via ipoji_partial (e.g. a brand-new company, not yet in
+    # ipo_master_records, whose ipo_live_tracker row shows it's already
+    # listed) -- gate on that freshly-known value too, not only on what
+    # was already in the DB before this call, or a first-ever lookup of an
+    # already-listed company would need a second call before its
+    # post-listing data got fetched.
+    listing_date_for_gate = ipoji_partial.get("listing_date") or existing.get("listing_date")
+
     indianapi_partial = {}
     price_partial = {}
-    if _already_listed(existing.get("listing_date")):
+    if _already_listed(listing_date_for_gate):
         try:
             stock = indianapi.fetch_stock(company_name)
             if stock:

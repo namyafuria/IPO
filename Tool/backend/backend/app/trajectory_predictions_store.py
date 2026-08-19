@@ -107,7 +107,9 @@ def save_trajectory_prediction(
     return result
 
 
-def get_latest_trajectory_prediction(conn: sqlite3.Connection, company_name: str) -> Optional[dict]:
+def get_latest_trajectory_prediction(
+    conn: sqlite3.Connection, company_name: str
+) -> Optional[dict]:
     """Returns the most recently saved prediction payload for this exact
     company_name (same string db.find_company() resolved to when the row
     was saved -- see the route's job of resolving name -> canonical

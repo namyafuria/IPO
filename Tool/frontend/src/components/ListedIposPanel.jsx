@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Badge from './Badge'
 import LiveHistorySection from './LiveHistorySection'
+import PredictedVsActualSection from './PredictedVsActualSection'
 import { getListedIpos, getTrajectorySmart, ApiError } from '../api'
 
 const HORIZON_DAYS = [2, 3, 5, 10]
@@ -197,6 +198,7 @@ export default function ListedIposPanel() {
               </div>
 
               <CompanyPrediction companyName={ipo.company_name} elapsed={ipo.trading_days_elapsed} />
+              <PredictedVsActualSection companyName={ipo.company_name} />
               <LiveHistorySection companyName={ipo.company_name} />
             </div>
           ))}

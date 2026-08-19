@@ -18,6 +18,7 @@ from .predict_trajectory_rolling import predict_trajectory_rolling
 from .gmp_sync import run_gmp_sync
 from .routers_trajectory import router as trajectory_router
 from .routers_live import router as live_router
+from .routers_predicted_vs_actual import router as predicted_vs_actual_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ipo_tool.main")
@@ -47,6 +48,7 @@ app.add_middleware(
 
 app.include_router(trajectory_router)
 app.include_router(live_router)
+app.include_router(predicted_vs_actual_router)
 
 
 @app.on_event("startup")

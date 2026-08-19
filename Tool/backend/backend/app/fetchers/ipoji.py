@@ -354,6 +354,42 @@ def discover_open_slugs() -> dict[str, str]:
     return slug_category
 
 
+# --- Step 8 (2026-08-19): safety-net alert for discover_open_slugs() count
+# drops -- same failure class as the 2026-08-16 dead-URL/regex bug (site
+# restructure silently returns 0 or near-0 cards instead of erroring), so a
+# silent 0/low count needs to be LOUD, not just quietly logged at info
+# level. Process-memory only (resets on restart, so first poll after any
+# deploy/restart never false-alarms) -- no new DB table, kept deliberately
+# simple. Compares each poll to the immediately-previous non-zero poll
+# within the same process, not a fixed baseline (open-IPO count naturally
+# drifts day to day as issues open/close).
+_last_known_good_slug_count: int | None = None
+_OPEN_SLUGS_DROP_THRESHOLD = 0.5  # alert if current < 50% of last known-good count
+
+
+def _check_open_slugs_alert(current_count: int) -> None:
+    global _last_known_good_slug_count
+    if current_count == 0:
+        logger.error(
+            "ALERT discover_open_slugs: found 0 open IPOs this poll -- almost "
+            "certainly a scrape break (dead URL/changed page layout), not a "
+            "real market condition. Check ipoji.com/ipo manually.",
+        )
+    elif (
+        _last_known_good_slug_count is not None
+        and current_count < _last_known_good_slug_count * _OPEN_SLUGS_DROP_THRESHOLD
+    ):
+        logger.error(
+            "ALERT discover_open_slugs: count dropped from %d to %d (>%d%% drop) "
+            "vs the previous poll -- possible scrape break, check ipoji.com/ipo "
+            "manually before trusting this cycle's Open section.",
+            _last_known_good_slug_count, current_count,
+            int(_OPEN_SLUGS_DROP_THRESHOLD * 100),
+        )
+    if current_count > 0:
+        _last_known_good_slug_count = current_count
+
+
 # ---------------------------------------------------------------------------
 # Section 2 — cleaning helpers (new: the old scripts wrote raw strings to CSV,
 # the DB columns are REAL/TEXT-typed and need real conversion)
@@ -701,6 +737,7 @@ def poll_and_save_open_ipos() -> dict:
     open_slugs = discover_open_slugs()  # {slug: issue_category}
     logger.warning("discover_open_slugs found: %r", open_slugs)
     summary["open_slugs_found"] = len(open_slugs)
+    _check_open_slugs_alert(len(open_slugs))
 
     conn = get_connection()
     try:

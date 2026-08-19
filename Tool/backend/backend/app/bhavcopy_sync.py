@@ -61,6 +61,39 @@ the underlying files still haven't been uploaded:
      uploaded this session, so the route is written as a standalone
      snippet (main_py_bhavcopy_route_snippet.py) for you to paste in
      against the real lock object, rather than guessed at inline here.
+
+--- FIX LOG (2026-08-18) -- item 2 (ISIN / NSE symbol on Listed cards) ---
+e) Found a real, confirmable bug while checking this file for item 2:
+   _match_price()'s bse_script_code fallback (`code in bse_map`) can NEVER
+   match, because bse_map is built by fetch_bse_bhavcopy() as
+   {isin: close_price} -- keyed by ISIN, not by BSE's numeric script code.
+   A `code` here (e.g. "543938") is being looked up against a dict of ISIN
+   strings (e.g. "INE0ABC01019"); that lookup fails 100% of the time.
+   Confirmed from this file alone, no upload needed: fetch_bse_bhavcopy()'s
+   own `out[isin] = float(close)` line is the only thing that populates
+   bse_map. Practical effect: any row whose isin column is still NULL
+   (exactly the brand-new, ipoji-only companies item 2 is about -- see
+   live_fetch.py's FIX LOG 9) can never be matched by this job at all, so
+   it never gets a price OR a backfilled identifier from bhavcopy, no
+   matter how many days go by. Fixed below by removing the dead fallback
+   (with a clear log line instead of a silent no-op) rather than leaving
+   code that looks like it works but structurally cannot -- re-enabling a
+   real script-code-keyed fallback needs BSE's actual scrip-code column
+   name, which is still unconfirmed (see point (a) above).
+f) Added the other half of item 2's ask ("confirm the sync actually
+   writes ISIN/symbol into ipo_master_records instead of discarding it"):
+   before this fix, it didn't -- this job only ever read isin/
+   bse_script_code (to match) and only ever wrote price_dayN columns. NSE's
+   UDiFF file carries the ticker symbol natively (TckrSymb, confirmed
+   column per fetch_nse_bhavcopy()'s docstring) alongside ISIN and close
+   price, so it costs nothing extra to also capture {isin: symbol} in the
+   same pass and backfill ipo_master_records.nse_symbol (NULL-only, same
+   safety convention as price_dayN) whenever a row is matched by ISIN.
+   BSE-side symbol/script-code enrichment is NOT included here -- BSE's
+   confirmed columns (point (a) above) don't include one, and inventing a
+   column name for a file this session couldn't fetch content from would
+   risk silently writing wrong data. That half stays a known gap until
+   BSE's real column layout is confirmed.
 """
 
 import datetime
@@ -178,6 +211,35 @@ def _nse_session() -> requests.Session:
     return session
 
 
+def _fetch_nse_bhavcopy_rows(date: datetime.date) -> list[dict]:
+    """Fetches + parses NSE's UDiFF bhavcopy once for `date`, filtered to
+    the same STK + equity-series rows fetch_nse_bhavcopy() always has.
+    Returns the raw dict rows (not just isin->close) so a single network
+    fetch + parse can feed both the price map (fetch_nse_bhavcopy(), used
+    for price_dayN) and the isin->symbol map (fetch_nse_isin_symbol_map(),
+    used for item 2's nse_symbol backfill -- see FIX LOG point (f) above)
+    without doubling the request."""
+    import csv
+
+    session = _nse_session()
+    url = (
+        f"https://nsearchives.nseindia.com/content/cm/"
+        f"BhavCopy_NSE_CM_0_0_0_{date.strftime('%Y%m%d')}_F_0000.csv.zip"
+    )
+    text = _fetch_zip_csv(url, extra_headers={"Referer": "https://www.nseindia.com/all-reports"}, session=session)
+    if not text:
+        return []
+    rows = []
+    for row in csv.DictReader(io.StringIO(text)):
+        if row.get("FinInstrmTp") != "STK":
+            continue
+        isin = (row.get("ISIN") or "").strip()
+        series = (row.get("SctySrs") or "").strip().upper()
+        if isin and series in _NSE_EQUITY_SERIES:
+            rows.append(row)
+    return rows
+
+
 def fetch_nse_bhavcopy(date: datetime.date) -> dict[str, float]:
     """{isin: close_price} for NSE equities on `date`.
 
@@ -197,30 +259,38 @@ def fetch_nse_bhavcopy(date: datetime.date) -> dict[str, float]:
 
     FIX (round 2): added the NSE session warm-up (_nse_session()) your
     own confirmed-working downloader script uses -- this function
-    previously fired a bare requests.get() with no cookie handshake."""
-    import csv
+    previously fired a bare requests.get() with no cookie handshake.
 
-    session = _nse_session()
-    url = (
-        f"https://nsearchives.nseindia.com/content/cm/"
-        f"BhavCopy_NSE_CM_0_0_0_{date.strftime('%Y%m%d')}_F_0000.csv.zip"
-    )
-    text = _fetch_zip_csv(url, extra_headers={"Referer": "https://www.nseindia.com/all-reports"}, session=session)
-    if not text:
-        return {}
+    FIX (2026-08-18, item 2): now built on top of _fetch_nse_bhavcopy_rows()
+    so the same parsed rows can also feed fetch_nse_isin_symbol_map()
+    without a second network fetch -- behavior/return type here unchanged,
+    still {isin: close_price}."""
     out = {}
-    for row in csv.DictReader(io.StringIO(text)):
-        if row.get("FinInstrmTp") != "STK":
-            continue
+    for row in _fetch_nse_bhavcopy_rows(date):
         isin = (row.get("ISIN") or "").strip()
-        series = (row.get("SctySrs") or "").strip().upper()
         close = row.get("ClsPric")
-        if isin and close and series in _NSE_EQUITY_SERIES:
+        if close:
             try:
                 out[isin] = float(close)
             except ValueError:
                 continue
     logger.info("NSE bhavcopy %s: %d ISINs parsed.", date.isoformat(), len(out))
+    return out
+
+
+def fetch_nse_isin_symbol_map(date: datetime.date) -> dict[str, str]:
+    """{isin: nse_symbol} for the same NSE UDiFF file fetch_nse_bhavcopy()
+    reads, via TckrSymb -- a confirmed column in that file (see
+    fetch_nse_bhavcopy()'s docstring). Added for item 2 (see FIX LOG point
+    (f) above): lets run_bhavcopy_sync() backfill ipo_master_records.
+    nse_symbol for any row matched by ISIN, at no extra fetch cost -- both
+    this and fetch_nse_bhavcopy() build on _fetch_nse_bhavcopy_rows()."""
+    out = {}
+    for row in _fetch_nse_bhavcopy_rows(date):
+        isin = (row.get("ISIN") or "").strip()
+        symbol = (row.get("TckrSymb") or "").strip()
+        if symbol:
+            out[isin] = symbol
     return out
 
 
@@ -346,7 +416,7 @@ def get_trackable_companies(as_of: datetime.date | None = None) -> tuple[list[di
     conn = db.get_connection()
     try:
         cur = conn.execute(
-            "SELECT company_name, isin, bse_script_code, listing_date, "
+            "SELECT company_name, isin, bse_script_code, nse_symbol, listing_date, "
             "price_day1, price_day2, price_day3, price_day5, price_day10 "
             "FROM ipo_master_records "
             "WHERE listing_date IS NOT NULL AND listing_date != '' AND listing_date >= ? "
@@ -366,18 +436,39 @@ def get_trackable_companies(as_of: datetime.date | None = None) -> tuple[list[di
     return rows, elapsed_by_date
 
 
-def _match_price(row: dict, nse_map: dict, bse_map: dict) -> float | None:
-    """isin first, bse_script_code fallback -- exact matches only, no
-    fuzzy/difflib (see db.strict_match()'s docstring on why that's banned
-    for cross-company data joins in this project)."""
+def _match_price(row: dict, nse_map: dict, bse_map: dict,
+                  nse_symbol_price_map: dict | None = None) -> float | None:
+    """isin-only exact match first -- no fuzzy/difflib (see db.strict_match()'s
+    docstring on why that's banned for cross-company data joins in this
+    project).
+
+    FIX (2026-08-18, item 2, see FIX LOG point (e) above): removed the
+    bse_script_code fallback that used to sit here (`code in bse_map`) --
+    bse_map is keyed by ISIN (fetch_bse_bhavcopy() builds it as
+    {isin: close}), so a BSE script code could never appear as a key in
+    it; that branch was dead code that could never match anything, not a
+    working fallback.
+
+    FIX (2026-08-19, Step 6): added an nse_symbol exact-match fallback for
+    rows still missing isin. Step 5's symbol-matcher project backfilled
+    nse_symbol/bse_script_code (not isin) for 442 rows -- without this
+    fallback, none of that work was reachable from this price-matching
+    job at all, since only isin was ever checked. NSE's UDiFF bhavcopy
+    carries TckrSymb natively, so this costs nothing extra to build (see
+    nse_symbol_price_map construction in run_bhavcopy_sync()). BSE-side
+    (bse_script_code) fallback stays out -- BSE's actual scrip-code column
+    name is still unconfirmed (see module docstring point (a)); guessing
+    at it risks silently matching the wrong row, which is exactly what
+    exact-only matching in this project exists to avoid."""
     isin = row.get("isin")
-    if isin:
-        merged = {**nse_map, **bse_map}
-        if isin in merged:
-            return merged[isin]
-    code = row.get("bse_script_code")
-    if code and code in bse_map:
-        return bse_map[code]
+    merged = {**nse_map, **bse_map}
+    if isin and isin in merged:
+        return merged[isin]
+
+    nse_symbol = row.get("nse_symbol")
+    if nse_symbol and nse_symbol_price_map and nse_symbol in nse_symbol_price_map:
+        return nse_symbol_price_map[nse_symbol]
+
     return None
 
 
@@ -396,7 +487,33 @@ def run_bhavcopy_sync(target_date: datetime.date | None = None) -> dict:
     try/except-per-source resilience convention as scheduler.py's other
     passes -- one bad row never stops the batch."""
     date = target_date or _previous_trading_day()
-    nse_map = fetch_nse_bhavcopy(date)
+    # FIX (2026-08-18, item 2): fetch NSE's rows once and derive both the
+    # price map and the isin->symbol map from them, instead of calling
+    # fetch_nse_bhavcopy() and fetch_nse_isin_symbol_map() separately (which
+    # would each independently re-fetch the same file over the network).
+    nse_rows = _fetch_nse_bhavcopy_rows(date)
+    nse_map: dict[str, float] = {}
+    nse_symbol_map: dict[str, str] = {}
+    # FIX (2026-08-19, Step 6): also key close price by NSE symbol, so rows
+    # backfilled by the symbol-matcher project (Step 5) but still missing
+    # isin can be matched here too -- see _match_price()'s new fallback.
+    nse_symbol_price_map: dict[str, float] = {}
+    for row in nse_rows:
+        isin = (row.get("ISIN") or "").strip()
+        close = row.get("ClsPric")
+        symbol = (row.get("TckrSymb") or "").strip()
+        close_val = None
+        if close:
+            try:
+                close_val = float(close)
+                nse_map[isin] = close_val
+            except ValueError:
+                pass
+        if symbol:
+            nse_symbol_map[isin] = symbol
+            if close_val is not None:
+                nse_symbol_price_map[symbol] = close_val
+    logger.info("NSE bhavcopy %s: %d ISINs parsed.", date.isoformat(), len(nse_map))
     bse_map = fetch_bse_bhavcopy(date)
     price_map = {**nse_map, **bse_map}
 
@@ -410,24 +527,66 @@ def run_bhavcopy_sync(target_date: datetime.date | None = None) -> dict:
     updated_companies = set()
     conn = db.get_connection()
     try:
+        # FIX (2026-08-18, item 2, see FIX LOG point (f) above): nse_symbol
+        # backfill only runs if ipo_master_records actually has that
+        # column -- checked once, up front, via PRAGMA table_info rather
+        # than assumed, since schemas.py wasn't available this session to
+        # confirm it's in IPO_COLUMNS. If it isn't there yet, this logs
+        # once and simply skips the symbol backfill for this whole run
+        # (price backfill below is completely unaffected either way) --
+        # add it with `ALTER TABLE ipo_master_records ADD COLUMN
+        # nse_symbol TEXT;` to turn the backfill on.
+        has_nse_symbol_column = any(
+            r["name"] == "nse_symbol" for r in conn.execute("PRAGMA table_info(ipo_master_records)")
+        )
+        if not has_nse_symbol_column:
+            logger.warning(
+                "bhavcopy_sync: ipo_master_records has no nse_symbol column -- "
+                "skipping item-2 symbol backfill this run. Add it with "
+                "ALTER TABLE ipo_master_records ADD COLUMN nse_symbol TEXT;"
+            )
+
         for row in companies:
             elapsed = elapsed_by_date.get(row["listing_date"])
             column = HORIZON_COLUMNS.get(elapsed)
-            if column is None:
+            if column is not None and row.get(column) is None:
+                try:
+                    price = _match_price(row, nse_map, bse_map, nse_symbol_price_map)
+                    if price is None:
+                        no_row += 1
+                    elif _update_if_null(conn, row["company_name"], column, price):
+                        updated += 1
+                        updated_companies.add(row["company_name"])
+                except Exception as e:  # noqa: BLE001 -- one bad company shouldn't stop the batch
+                    logger.warning("bhavcopy_sync price update failed for %r: %s", row["company_name"], e)
+            elif column is None:
                 no_column += 1
-                continue
-            if row.get(column) is not None:
-                continue  # already filled, nothing to do
-            try:
-                price = _match_price(row, nse_map, bse_map)
-                if price is None:
-                    no_row += 1
-                    continue
-                if _update_if_null(conn, row["company_name"], column, price):
-                    updated += 1
-                    updated_companies.add(row["company_name"])
-            except Exception as e:  # noqa: BLE001 -- one bad company shouldn't stop the batch
-                logger.warning("bhavcopy_sync failed for %r: %s", row["company_name"], e)
+
+            # FIX (2026-08-19, Step 7): complete the nse_symbol backfill --
+            # nse_symbol_map and has_nse_symbol_column were both already
+            # built above (2026-08-18) but never actually written anywhere;
+            # this is the missing UPDATE. Runs for EVERY trackable company
+            # each cycle (not just ones due for a price column today), isin
+            # exact match, NULL-only -- so any newly-listed company gets its
+            # nse_symbol auto-filled the first cycle after isin lands on its
+            # row, with no manual CSV re-run needed. bse_script_code has no
+            # equivalent daily source (BSE bhavcopy carries no scrip code,
+            # per module docstring point (a)) -- stays manual for new listings.
+            if has_nse_symbol_column and not row.get("nse_symbol"):
+                isin = row.get("isin")
+                symbol = nse_symbol_map.get(isin) if isin else None
+                if symbol:
+                    try:
+                        if _update_if_null(conn, row["company_name"], "nse_symbol", symbol):
+                            logger.info(
+                                "bhavcopy_sync: backfilled nse_symbol=%s for %r via isin match",
+                                symbol, row["company_name"],
+                            )
+                    except Exception as e:  # noqa: BLE001
+                        logger.warning(
+                            "bhavcopy_sync: nse_symbol backfill failed for %r: %s",
+                            row["company_name"], e,
+                        )
         conn.commit()
     finally:
         conn.close()

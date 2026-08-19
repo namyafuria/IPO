@@ -24,12 +24,7 @@ requiring `python -m app.backfill_trajectory_now`. Adjust the import if
 your package is named something other than `app`.
 """
 
-import logging
+from app import scheduler
 
-logging.basicConfig(level=logging.INFO)
-
-from app import scheduler  # adjust if your package isn't named `app`
-
-if __name__ == "__main__":
-    result = scheduler.backfill_all_trajectory_predictions()
-    print(result)
+result = scheduler.backfill_all_trajectory_predictions()
+print(result)

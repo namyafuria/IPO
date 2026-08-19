@@ -127,4 +127,13 @@ export function getLiveHistory(name) {
   return request(`/ipos/${encodeURIComponent(name)}/live-history`)
 }
 
+// Item 3: predicted-vs-actual comparison for one company's saved trajectory
+// prediction (routers_predicted_vs_actual.py GET
+// /ipos/{slug}/predicted-vs-actual). Keyed loosely -- backend does fuzzy
+// find_company() matching, so the plain company name works as the slug,
+// same as getLiveHistory().
+export function getPredictedVsActual(name) {
+  return request(`/ipos/${encodeURIComponent(name)}/predicted-vs-actual`)
+}
+
 export { ApiError }

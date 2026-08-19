@@ -1,0 +1,444 @@
+DRY-RUN: Groww (Billionbrains Garage Ventures Ltd) -> nse=GROWW bse=None
+DRY-RUN: Swiggy Limited -> nse=SWIGGY bse=None
+DRY-RUN: Hyundai Motor India Ltd -> nse=HYUNDAI bse=None
+DRY-RUN: Ather Energy Ltd. -> nse=ATHERENERG bse=None
+DRY-RUN: Hexaware Technologies Ltd. -> nse=HEXT bse=None
+DRY-RUN: HDB Financial Services Ltd. -> nse=HDBFS bse=None
+DRY-RUN: Tata Capital Ltd. -> nse=TATACAP bse=None
+DRY-RUN: Bajaj Housing Finance Ltd. -> nse=BAJAJHFL bse=None
+DRY-RUN: Shiprocket Ltd. -> nse=None bse=544871
+DRY-RUN: Milky Mist Dairy Food Ltd. -> nse=None bse=544868
+DRY-RUN: Dhoot Transmission Ltd. -> nse=DHOOTTRANS bse=None
+DRY-RUN: Molbio Diagnostics Ltd. -> nse=MOLBIO bse=None
+DRY-RUN: Technocraft Ventures Ltd. -> nse=TECHNOCRAF bse=None
+DRY-RUN: LEAP India Ltd. -> nse=LEAPIND bse=None
+DRY-RUN: LAPL Automotive Ltd. -> nse=None bse=544863
+DRY-RUN: Ardee Industries Ltd. -> nse=ARDEE bse=None
+DRY-RUN: Aegeus Technologies Ltd. -> nse=None bse=544858
+DRY-RUN: G.V.Electricals Ltd. -> nse=None bse=544859
+DRY-RUN: Aequs Ltd -> nse=AEQUS bse=None
+DRY-RUN: Meesho Ltd -> nse=MEESHO bse=None
+DRY-RUN: Vidya Wires Ltd -> nse=VIDYAWIRES bse=None
+DRY-RUN: Sudeep Pharma Ltd -> nse=SUDEEPPHRM bse=None
+DRY-RUN: Physics Wallah Limited -> nse=PWL bse=None
+DRY-RUN: Pine Labs Ltd -> nse=PINELABS bse=None
+DRY-RUN: Orkla India Ltd -> nse=ORKLAINDIA bse=None
+DRY-RUN: Midwest Ltd -> nse=MIDWESTLTD bse=None
+DRY-RUN: Glottis Ltd -> nse=GLOTTIS bse=None
+DRY-RUN: Pace Digitek Ltd -> nse=PACEDIGITK bse=None
+DRY-RUN: BMW Ventures Ltd -> nse=BMWVENTLTD bse=None
+DRY-RUN: GK Energy Ltd -> nse=GKENERGY bse=None
+DRY-RUN: VMS TMT Ltd -> nse=VMSTMT bse=None
+DRY-RUN: Urban Company Ltd -> nse=URBANCO bse=None
+DRY-RUN: Gem Aromatics Ltd -> nse=GEMAROMA bse=None
+DRY-RUN: Patel Retail Ltd -> nse=PATELRMART bse=None
+DRY-RUN: Vikram Solar Ltd -> nse=VIKRAMSOLR bse=None
+DRY-RUN: JSW Cement Ltd -> nse=JSWCEMENT bse=None
+DRY-RUN: M & B Engineering Ltd -> nse=MBEL bse=None
+DRY-RUN: Sri Lotus Developers & Realty Ltd -> nse=LOTUSDEV bse=None
+DRY-RUN: National Securities Depository Ltd (NSDL) -> nse=None bse=544467
+DRY-RUN: Aditya Infotech Ltd -> nse=CPPLUS bse=None
+DRY-RUN: Laxmi India Finance Ltd -> nse=LAXMIINDIA bse=None
+DRY-RUN: Shanti Gold International Ltd -> nse=SHANTIGOLD bse=None
+DRY-RUN: Brigade Hotel Ventures Limited -> nse=BRIGHOTEL bse=None
+DRY-RUN: GNG Electronics Limited -> nse=EBGNG bse=None
+DRY-RUN: Indiqube Spaces Limited -> nse=INDIQUBE bse=None
+DRY-RUN: Anthem Biosciences Limited -> nse=ANTHEM bse=None
+DRY-RUN: Travel Food Services Limited -> nse=TRAVELFOOD bse=None
+DRY-RUN: Crizac Limited -> nse=CRIZAC bse=None
+DRY-RUN: Indogulf Cropsciences Limited -> nse=IGCL bse=None
+DRY-RUN: Sambhv Steel Tubes Limited -> nse=SAMBHV bse=None
+DRY-RUN: Globe Civil Projects Limited -> nse=GLOBECIVIL bse=None
+DRY-RUN: Kalpataru Limited -> nse=KALPATARU bse=None
+DRY-RUN: Ellenbarrie Industrial Gases Limited -> nse=ELLEN bse=None
+DRY-RUN: Arisinfra Solutions Limited -> nse=ARIS bse=None
+DRY-RUN: Oswal Pumps Limited -> nse=OSWALPUMPS bse=None
+DRY-RUN: Scoda Tubes Limited -> nse=SCODATUBES bse=None
+DRY-RUN: Prostarm Info Systems Limited -> nse=PROSTARM bse=None
+DRY-RUN: Aegis Vopak Terminals Limited -> nse=AEGISVOPAK bse=None
+DRY-RUN: Belrise Industries Limited -> nse=BELRISE bse=None
+DRY-RUN: Borana Weaves Limited -> nse=BORANA bse=None
+DRY-RUN: Ajax Engineering Limited -> nse=AJAXENGG bse=None
+DRY-RUN: Dr Agarwal's Healthcare Limited -> nse=AGARWALEYE bse=None
+DRY-RUN: Stallion India Fluorochem Limited -> nse=STALLION bse=None
+DRY-RUN: Laxmi Dental Limited -> nse=LAXMIDENTL bse=None
+DRY-RUN: Quadrant Future Tek Limited -> nse=QUADFUTURE bse=None
+DRY-RUN: Indo Farm Equipment Limited -> nse=INDOFARM bse=None
+DRY-RUN: Unimech Aerospace and Manufacturing Limited -> nse=UNIMECH bse=None
+DRY-RUN: Ventive Hospitality Limited -> nse=VENTIVE bse=None
+DRY-RUN: Carraro India Limited -> nse=CARRARO bse=None
+DRY-RUN: Senores Pharmaceuticals Limited -> nse=SENORES bse=None
+DRY-RUN: Transrail Lighting Limited -> nse=TRANSRAILL bse=None
+DRY-RUN: Dam Capital Advisors Limited -> nse=DAMCAPITAL bse=None
+DRY-RUN: Mamata Machinery Limited -> nse=MAMATA bse=None
+DRY-RUN: Sanathan Textiles Limited -> nse=SANATHAN bse=None
+DRY-RUN: Concord Enviro Systems Limited -> nse=CEWATER bse=None
+DRY-RUN: Inventurus Knowledge Solutions Limited -> nse=IKS bse=None
+DRY-RUN: Vishal Mega Mart Limited -> nse=VMM bse=None
+DRY-RUN: One Mobikwik Systems Limited -> nse=MOBIKWIK bse=None
+DRY-RUN: Sai Life Sciences Limited -> nse=SAILIFE bse=None
+DRY-RUN: Suraksha Diagnostic Limited -> nse=SURAKSHA bse=None
+DRY-RUN: Enviro Infra Engineers Limited -> nse=EIEL bse=None
+DRY-RUN: NTPC Green Energy Limited -> nse=NTPCGREEN bse=None
+DRY-RUN: Zinka Logistics Solution Limited (BlackBuck) -> nse=BLACKBUCK bse=None
+DRY-RUN: Niva Bupa Health Insurance Company Limited -> nse=NIVABUPA bse=None
+DRY-RUN: ACME Solar Holdings Limited -> nse=ACMESOLAR bse=None
+DRY-RUN: Sagility India Limited -> nse=SAGILITY bse=None
+DRY-RUN: Afcons Infrastructure Limited -> nse=AFCONS bse=None
+DRY-RUN: Godavari Biorefineries Limited -> nse=GODAVARIB bse=None
+DRY-RUN: Deepak Builders & Engineers India Limited -> nse=DBEIL bse=None
+DRY-RUN: Waaree Energies Limited -> nse=WAAREEENER bse=None
+DRY-RUN: Garuda Construction and Engineering Limited -> nse=GARUDA bse=None
+DRY-RUN: Diffusion Engineers Limited -> nse=DIFFNKG bse=None
+DRY-RUN: KRN Heat Exchanger and Refrigeration Limited -> nse=KRN bse=None
+DRY-RUN: Manba Finance Limited -> nse=MANBA bse=None
+DRY-RUN: Arkade Developers Limited -> nse=ARKADE bse=None
+DRY-RUN: Northern ARC Capital Limited -> nse=NORTHARC bse=None
+DRY-RUN: Western Carriers Limited -> nse=WCIL bse=None
+DRY-RUN: P N Gadgil Jewellers Limited -> nse=PNGJL bse=None
+DRY-RUN: Tolins Tyres Limited -> nse=TOLINS bse=None
+DRY-RUN: Kross Limited -> nse=KROSS bse=None
+DRY-RUN: Shree Tirupati Balajee Agro Trading Company Limited -> nse=BALAJEE bse=None
+DRY-RUN: Gala Precision Engineering Limited -> nse=GALAPREC bse=None
+DRY-RUN: Baazar Style Retail Limited -> nse=STYLEBAAZA bse=None
+DRY-RUN: Ecos (India) Mobility & Hospitality Limited -> nse=ECOSMOBLTY bse=None
+DRY-RUN: Premier Energies Limited -> nse=PREMIERENE bse=None
+DRY-RUN: Orient Technologies Limited -> nse=ORIENTTECH bse=None
+DRY-RUN: Saraswati Saree Depot Limited -> nse=SSDL bse=None
+DRY-RUN: Brainbees Solutions Limited -> nse=FIRSTCRY bse=None
+DRY-RUN: Unicommerce eSolutions Limited -> nse=UNIECOM bse=None
+DRY-RUN: Ola Electric Mobility Limited -> nse=OLAELEC bse=None
+DRY-RUN: Ceigall India Limited -> nse=CEIGALL bse=None
+DRY-RUN: Akums Drugs and Pharmaceuticals Limited -> nse=AKUMS bse=None
+DRY-RUN: Sanstar Limited -> nse=SANSTAR bse=None
+DRY-RUN: Emcure Pharmaceuticals Limited -> nse=EMCURE bse=None
+DRY-RUN: Bansal Wire Industries Limited -> nse=BANSALWIRE bse=None
+DRY-RUN: Vraj Iron & Steel Limited -> nse=VRAJ bse=None
+DRY-RUN: Allied Blenders and Distillers Limited -> nse=ABDL bse=None
+DRY-RUN: Stanley Lifestyles Limited -> nse=STANLEY bse=None
+DRY-RUN: Vodafone Idea Ltd -> nse=None bse=532822
+DRY-RUN: Bharti Hexacom Ltd -> nse=BHARTIHEXA bse=None
+DRY-RUN: SRM Contractors Ltd -> nse=SRM bse=None
+DRY-RUN: Krystal Integrated Services Ltd -> nse=KRYSTAL bse=None
+DRY-RUN: Popular Vehicles & Services Ltd -> nse=PVSL bse=None
+DRY-RUN: Gopal Snacks Ltd -> nse=GOPAL bse=None
+DRY-RUN: RK SWAMY Limited -> nse=RKSWAMY bse=None
+DRY-RUN: Mukka Proteins Ltd -> nse=MUKKA bse=None
+DRY-RUN: Exicom Tele-Systems Ltd -> nse=EXICOM bse=None
+DRY-RUN: Platinum Industries Ltd -> nse=PLATIND bse=None
+DRY-RUN: GPT Healthcare Ltd -> nse=GPTHEALTH bse=None
+DRY-RUN: Juniper Hotels Ltd -> nse=JUNIPER bse=None
+DRY-RUN: Vibhor Steel Tubes Limited -> nse=VSTL bse=None
+DRY-RUN: Entero Healthcare Solutions Limited -> nse=ENTERO bse=None
+DRY-RUN: Jana Small Finance Bank Limited -> nse=JSFB bse=None
+DRY-RUN: Capital Small Finance Bank Limited -> nse=CAPITALSFB bse=None
+DRY-RUN: Rashi Peripherals Limited -> nse=RPTECH bse=None
+DRY-RUN: BLS E-Services Limited -> nse=BLSE bse=None
+DRY-RUN: Nova Agritech Limited -> nse=NOVAAGRI bse=None
+DRY-RUN: Epack Durable Limited -> nse=EPACK bse=None
+DRY-RUN: Medi Assist Healthcare Services Limited -> nse=MEDIASSIST bse=None
+DRY-RUN: Jyoti CNC Automation Limited -> nse=JYOTICNC bse=None
+DRY-RUN: Atharva Poly-Plast Limited -> nse=None bse=544812
+DRY-RUN: Modern Diagnostic & Research Centre Limited -> nse=None bse=544673
+DRY-RUN: Nanta Tech Limited -> nse=None bse=544668
+DRY-RUN: Apollo Techno Industries Limited -> nse=None bse=544671
+DRY-RUN: Admach Systems Limited -> nse=None bse=544669
+DRY-RUN: Dachepalli Publishers Limited -> nse=None bse=544667
+DRY-RUN: Global Ocean Logistics India Limited -> nse=None bse=544665
+DRY-RUN: Neptune Logitek Limited -> nse=None bse=544663
+DRY-RUN: Stanbik Agro Limited -> nse=None bse=544659
+DRY-RUN: HRS Aluglaze Limited -> nse=None bse=544656
+DRY-RUN: Pajson Agro India Limited -> nse=None bse=544657
+DRY-RUN: Shipwaves Online Limited -> nse=None bse=544646
+DRY-RUN: Unisem Agritech Limited -> nse=None bse=544648
+DRY-RUN: Riddhi Display Equipments Limited -> nse=None bse=544640
+DRY-RUN: Prodocs Solutions Limited -> nse=None bse=544643
+DRY-RUN: KV Toys India Limited -> nse=None bse=544641
+DRY-RUN: Methodhub Software Limited -> nse=None bse=544637
+DRY-RUN: Western Overseas Study Abroad Limited -> nse=None bse=544636
+DRY-RUN: Luxury Time Limited -> nse=None bse=544635
+DRY-RUN: Helloji Holidays Limited -> nse=None bse=544630
+DRY-RUN: Ravelcare Limited -> nse=None bse=544629
+DRY-RUN: Astron Multigrain Limited -> nse=None bse=544628
+DRY-RUN: Purple Wave Infocom Limited -> nse=None bse=544627
+DRY-RUN: Logiciel Solutions Limited -> nse=None bse=544625
+DRY-RUN: Exato Technologies Limited -> nse=None bse=544626
+DRY-RUN: K K Silk Mills Limited -> nse=None bse=544624
+DRY-RUN: Mother Nutri Foods Limited -> nse=None bse=544623
+DRY-RUN: SSMD Agrotech India Limited -> nse=None bse=544621
+DRY-RUN: Gallard Steel Limited -> nse=None bse=544616
+DRY-RUN: Mahamaya Lifesciences Limited -> nse=None bse=544611
+DRY-RUN: Workmates Core2Cloud Solution Limited -> nse=None bse=544610
+DRY-RUN: Shining Tools Limited -> nse=None bse=544607
+DRY-RUN: Safecure Services Limited -> nse=None bse=544596
+DRY-RUN: Game Changers Texfab Limited -> nse=None bse=544594
+DRY-RUN: Shlokka Dyes Limited -> nse=None bse=544582
+DRY-RUN: SK Minerals & Additives Limited -> nse=None bse=544584
+DRY-RUN: Sihora Industries Limited -> nse=None bse=544585
+DRY-RUN: Mittal Sections Limited -> nse=None bse=544575
+DRY-RUN: NSB BPO Solutions Limited -> nse=None bse=544571
+DRY-RUN: DSM Fresh Foods Limited -> nse=None bse=544568
+DRY-RUN: Valplast Technologies Limited -> nse=None bse=544565
+DRY-RUN: Chiraharit Limited -> nse=None bse=544561
+DRY-RUN: Sunsky Logistics Limited -> nse=None bse=544566
+DRY-RUN: Infinity Infoway Limited -> nse=None bse=544567
+DRY-RUN: Om Metallogic Limited -> nse=None bse=544559
+DRY-RUN: Sodhani Capital Limited -> nse=None bse=544560
+DRY-RUN: Dhillon Freight Carrier Limited -> nse=None bse=544556
+DRY-RUN: Ameenji Rubber Limited -> nse=None bse=544555
+DRY-RUN: Bhavik Enterprises Limited -> nse=None bse=544551
+DRY-RUN: Rukmani Devi Garg Agro Impex Limited -> nse=None bse=544552
+DRY-RUN: MPK Steels (I) Limited -> nse=None bse=544553
+DRY-RUN: KVS Castings Limited -> nse=None bse=544554
+DRY-RUN: Chatterbox Technologies Limited -> nse=None bse=544546
+DRY-RUN: Earkart Limited -> nse=None bse=544549
+DRY-RUN: Telge Projects Limited -> nse=None bse=544544
+DRY-RUN: Praruh Technologies Limited -> nse=None bse=544538
+DRY-RUN: Justo Realfintech Limited -> nse=None bse=544542
+DRY-RUN: Systematic Industries Limited -> nse=None bse=544541
+DRY-RUN: True Colors Limited -> nse=None bse=544531
+DRY-RUN: Aptus Pharma Limited -> nse=None bse=544529
+DRY-RUN: Bharatrohan Airborne Innovations Limited -> nse=None bse=544535
+DRY-RUN: Solvex Edibles Limited -> nse=None bse=544539
+DRY-RUN: JD Cables Limited -> nse=None bse=544524
+DRY-RUN: Sampat Aluminium Limited -> nse=None bse=544520
+DRY-RUN: LT Elevator Limited -> nse=None bse=544518
+DRY-RUN: Airfloa Rail Technology Limited -> nse=None bse=544516
+DRY-RUN: Jay Ambe Supermarkets Limited -> nse=None bse=544514
+DRY-RUN: Karbonsteel Engineering Limited -> nse=None bse=544511
+DRY-RUN: Krupalu Metals Limited -> nse=None bse=544509
+DRY-RUN: Nilachal Carbo Metalicks Limited -> nse=None bse=544510
+DRY-RUN: Vashishtha Luxury Fashion Limited -> nse=None bse=544508
+DRY-RUN: Austere Systems Limited -> nse=None bse=544505
+DRY-RUN: Sharvaya Metals Limited -> nse=None bse=544506
+DRY-RUN: Goel Construction Company Limited -> nse=None bse=544504
+DRY-RUN: Rachit Prints Limited -> nse=None bse=544503
+DRY-RUN: Sugs Lloyd Limited -> nse=None bse=544501
+DRY-RUN: Abril Paper Tech Limited -> nse=None bse=544500
+DRY-RUN: Oval Projects Engineering Limited -> nse=None bse=544498
+DRY-RUN: NIS Management Limited -> nse=None bse=544495
+DRY-RUN: Globtier Infotech limited -> nse=None bse=544494
+DRY-RUN: Icodex Publishing Solutions Limited -> nse=None bse=544483
+DRY-RUN: Star Imaging and Path Lab Limited -> nse=None bse=544482
+DRY-RUN: BLT Logistics Limited -> nse=None bse=544474
+DRY-RUN: Essex Marine Limited -> nse=None bse=544475
+DRY-RUN: Takyon Networks Limited -> nse=None bse=544471
+DRY-RUN: Mehul Colours Limited -> nse=None bse=544472
+DRY-RUN: Repono Limited -> nse=None bse=544463
+DRY-RUN: Umiya Mobile Limited -> nse=None bse=544464
+DRY-RUN: Shree Refrigerations Limited -> nse=None bse=544458
+DRY-RUN: Patel Chem Specialities Limited -> nse=None bse=544460
+DRY-RUN: Monarch Surveyors and Engineering Consultants Limited -> nse=None bse=544453
+DRY-RUN: Swastika Castal Limited -> nse=None bse=544452
+DRY-RUN: Monika Alcobev Limited -> nse=None bse=544451
+DRY-RUN: Asston Pharmaceuticals Limited -> nse=None bse=544445
+DRY-RUN: GLEN Industries Limited -> nse=None bse=544444
+DRY-RUN: Chemkart India Limited -> nse=None bse=544442
+DRY-RUN: Meta Infotech Limited -> nse=None bse=544441
+DRY-RUN: Cryogenic OGS Limited -> nse=None bse=544440
+DRY-RUN: Marc Loire Fashions Limited -> nse=None bse=544437
+DRY-RUN: Vandan Foods Limited -> nse=None bse=544436
+DRY-RUN: Adcounty Media India Limited -> nse=None bse=544435
+DRY-RUN: Neetu Yoshi Limited -> nse=None bse=544434
+DRY-RUN: Valencia India Limited -> nse=None bse=544433
+DRY-RUN: Ace Alpha Tech Limited -> nse=None bse=544431
+DRY-RUN: Supertech EV Limited -> nse=None bse=544428
+DRY-RUN: Icon Facilitators Limited -> nse=None bse=544426
+DRY-RUN: AJC Jewel Manufacturers Limited -> nse=None bse=544425
+DRY-RUN: Abram Food Limited -> nse=None bse=544422
+DRY-RUN: Aten Papers and Foam Limited -> nse=None bse=544417
+DRY-RUN: 3B FILMS LIMITED -> nse=None bse=544412
+DRY-RUN: Astonea Labs Limited -> nse=None bse=544409
+DRY-RUN: Srigee DLM Limited -> nse=None bse=544399
+DRY-RUN: Manoj Jewellers Limited -> nse=None bse=544400
+DRY-RUN: Kenrik Industries Limited -> nse=None bse=544398
+DRY-RUN: Infonative Solutions Limited -> nse=None bse=544393
+DRY-RUN: Spinaroo Commercial Limited -> nse=None bse=544392
+DRY-RUN: Retaggio Industries Limited -> nse=None bse=544391
+DRY-RUN: Identixweb Limited -> nse=None bse=544388
+DRY-RUN: Desco Infratech Limited -> nse=None bse=544387
+DRY-RUN: Paradeep Parivahan Limited -> nse=None bse=544383
+DRY-RUN: Super Iron Foundry Limited -> nse=None bse=544381
+DRY-RUN: PDP Shipping & Projects Limited -> nse=None bse=544378
+DRY-RUN: NAPS Global India Limited -> nse=None bse=544373
+DRY-RUN: Shreenath Paper Products Limited -> nse=None bse=544372
+DRY-RUN: Nukleus Office Solutions Limited -> nse=None bse=544370
+DRY-RUN: Beezaasan Explotech Limited -> nse=None bse=544369
+DRY-RUN: Swasth Foodtech India Limited -> nse=None bse=544368
+DRY-RUN: L.K.Mehta Polymers Limited -> nse=None bse=544366
+DRY-RUN: Shanmuga Hospital Limited -> nse=None bse=544365
+DRY-RUN: Solarium Green Energy Limited -> nse=None bse=544354
+DRY-RUN: Amwill Health Care Limited -> nse=None bse=544353
+DRY-RUN: Malpani Pipes & Fittings Limited -> nse=None bse=544351
+DRY-RUN: H.M. Electro Mech Limited -> nse=None bse=544349
+DRY-RUN: GB Logistics Commerce Limited -> nse=None bse=544348
+DRY-RUN: CLN Energy Limited -> nse=None bse=544347
+DRY-RUN: Capital Numbers Infotech Limited -> nse=None bse=544343
+DRY-RUN: Rikhav Securities Limited -> nse=None bse=544340
+DRY-RUN: B.R.Goyal Infrastructure Limited -> nse=None bse=544335
+DRY-RUN: Avax Apparels And Ornaments Limited -> nse=None bse=544337
+DRY-RUN: Indobell Insulation Limited -> nse=None bse=544334
+DRY-RUN: Parmeshwar Metal Limited -> nse=None bse=544330
+DRY-RUN: Davin Sons Retail Limited -> nse=None bse=544331
+DRY-RUN: Leo Dryfruits & Spices Trading Limited -> nse=None bse=544329
+DRY-RUN: Technichem Organics Limited -> nse=None bse=544327
+DRY-RUN: Citichem India Limited -> nse=None bse=544324
+DRY-RUN: NACDAC Infrastructure Limited -> nse=None bse=544313
+DRY-RUN: Hamps Bio Limited -> nse=None bse=544312
+DRY-RUN: Yash Highvoltage Limited -> nse=None bse=544310
+DRY-RUN: Jungle Camps India Limited -> nse=None bse=544304
+DRY-RUN: Toss the Coin Limited -> nse=None bse=544303
+DRY-RUN: Nisus Finance Services Co Limited -> nse=None bse=544296
+DRY-RUN: Rajesh Power Services Limited -> nse=None bse=544291
+DRY-RUN: Mangal Compusolution Limited -> nse=None bse=544287
+DRY-RUN: Shiv Texchem Limited -> nse=None bse=544272
+DRY-RUN: Khyati Global Ventures Limited -> nse=None bse=544270
+DRY-RUN: NeoPolitan Pizza and Foods Limited -> nse=None bse=544269
+DRY-RUN: Subam Papers Limited -> nse=None bse=544267
+DRY-RUN: Nexxus Petro Industries Limited -> nse=None bse=544265
+DRY-RUN: Popular Foundations Limited -> nse=None bse=544259
+DRY-RUN: Sodhani Academy of Fintech Enablers Limited -> nse=None bse=544257
+DRY-RUN: Share Samadhan Limited -> nse=None bse=544251
+DRY-RUN: Naturewings Holidays Limited -> nse=None bse=544245
+DRY-RUN: Travels & Rentals Limited -> nse=None bse=544242
+DRY-RUN: Rapid Multimodal Logistics Limited -> nse=None bse=544237
+DRY-RUN: Resourceful Automobile Limited -> nse=None bse=544236
+DRY-RUN: Broach Lifecare Hospital -> nse=None bse=544231
+DRY-RUN: Afcom Holdings Limited -> nse=None bse=544224
+DRY-RUN: Kizi Apparels Limited -> nse=None bse=544221
+DRY-RUN: Clinitech Laboratory Limited -> nse=None bse=544220
+DRY-RUN: VVIP Infratech Limited -> nse=None bse=544219
+DRY-RUN: Aelea Commodities Limited -> nse=None bse=544213
+DRY-RUN: Three M Paper Boards Limited -> nse=None bse=544214
+DRY-RUN: Dindigul Farm Product Limited -> nse=None bse=544201
+DRY-RUN: GEM Enviro Management Limited -> nse=None bse=544199
+DRY-RUN: United Cotfab Limited -> nse=None bse=544195
+DRY-RUN: Sattrix Information Security Limited -> nse=None bse=544189
+DRY-RUN: 3C IT Solutions & Telecoms (India) Limited -> nse=None bse=544190
+DRY-RUN: Magenta Lifecare Limited -> nse=None bse=544188
+DRY-RUN: Associated Coaters Limited -> nse=None bse=544183
+DRY-RUN: Piotex Industries Limited -> nse=None bse=544178
+DRY-RUN: Aztec Fluids & Machinery Limited -> nse=None bse=544177
+DRY-RUN: TGIF Agribusiness Limited -> nse=None bse=544175
+DRY-RUN: Finelistings Technologies Limited -> nse=None bse=544173
+DRY-RUN: Amkay Products Limited -> nse=None bse=544169
+DRY-RUN: Storage Technologies and Automation Limited -> nse=None bse=544171
+DRY-RUN: Shivam Chemicals Limited -> nse=None bse=544165
+DRY-RUN: Emmforce Autotech Limited -> nse=None bse=544166
+DRY-RUN: Varyaa Creations Limited -> nse=None bse=544168
+DRY-RUN: Faalcon Concepts Limited -> nse=None bse=544164
+DRY-RUN: Greenhitech Ventures Limited -> nse=None bse=544163
+DRY-RUN: Jay Kailash Namkeen Limited -> nse=None bse=544160
+DRY-RUN: GConnect Logitech and Supply Chain Limited -> nse=None bse=544156
+DRY-RUN: Vruddhi Engineering Works Limited -> nse=None bse=544157
+DRY-RUN: Chatha Foods Limited -> nse=None bse=544151
+DRY-RUN: KP Green Engineering Limited -> nse=None bse=544150
+DRY-RUN: Royal Sense Limited -> nse=None bse=544143
+DRY-RUN: Pune E-Stock Broking Limited -> nse=None bse=544141
+DRY-RUN: Koura Fine Diamond Jewelry Limited -> nse=None bse=544139
+DRY-RUN: Rudra Gas Enterprise Limited -> nse=None bse=544121
+DRY-RUN: Gabriel Pet Straps Limited -> nse=None bse=544108
+DRY-RUN: Harshdeep Hortico Limited -> nse=None bse=544105
+DRY-RUN: Mayank Cattle Food Limited -> nse=None bse=544106
+DRY-RUN: Brisk Technovision Limited -> nse=None bse=544101
+DRY-RUN: Euphoria Infotech India Limited -> nse=None bse=544094
+DRY-RUN: Qualitek Labs Limited -> nse=None bse=544091
+DRY-RUN: Shree Marutinandan Tubes Limited -> nse=None bse=544083
+DRY-RUN: New Swan Multitech Limited -> nse=None bse=544082
+DRY-RUN: Shri Balaji Valve Components Limited -> nse=None bse=544074
+DRY-RUN: Manoj Ceramic Limited -> nse=None bse=544073
+DRY-RUN: AIK Pipes And Polymers Limited -> nse=None bse=544072
+DRY-RUN: Shanti Spintex Limited -> nse=None bse=544059
+DRY-RUN: AMIC Forging Limited -> nse=None bse=544037
+DRY-RUN: Swashthik Plascon Limited -> nse=None bse=544035
+DRY-RUN: KK Shah Hospitals Limited -> nse=None bse=544013
+DRY-RUN: Vrundavan Plantation Limited -> nse=None bse=544011
+DRY-RUN: City Crops Agro limited -> nse=None bse=544000
+DRY-RUN: Techknowgreen Solutions Limited -> nse=None bse=543991
+DRY-RUN: CFF Fluid Control Limited -> nse=None bse=543920
+DRY-RUN: Hemant Surgical Industries Limited -> nse=None bse=543916
+DRY-RUN: S.V.J. Enterprises Limited -> nse=None bse=543799
+DRY-RUN: Macfos Limited -> nse=None bse=543787
+DRY-RUN: SVS Ventures Limited -> nse=None bse=543745
+DRY-RUN: Droneacharya Aerial Innovations Limited -> nse=None bse=543713
+DRY-RUN: Concord Control Systems Limited -> nse=None bse=543619
+DRY-RUN: Silicon Rental Solutions Limited -> nse=None bse=543615
+DRY-RUN: Steelman Telecom Limited -> nse=None bse=543622
+DRY-RUN: Trident Lifeline Limited -> nse=None bse=543616
+DRY-RUN: Shantidoot Infra Services Limited -> nse=None bse=543598
+DRY-RUN: Dipna Pharmachem Limited -> nse=None bse=543594
+DRY-RUN: Pearl Green Clubs and Resorts Limited -> nse=None bse=543540
+DRY-RUN: Global Longlife Hospital and Research Limited -> nse=None bse=543520
+DRY-RUN: Shashwat Furnishing Solutions Limited -> nse=None bse=543519
+DRY-RUN: Sunrise Efficient Marketing Limited -> nse=None bse=543515
+DRY-RUN: Bhatia Colour Chem Limited -> nse=None bse=543497
+DRY-RUN: Safa Systems & Technologies Limited -> nse=None bse=543461
+DRY-RUN: Quality RO Industries Limited -> nse=None bse=543460
+DRY-RUN: Suyog Gurbaxani Funicular Ropeways Limited -> nse=None bse=543391
+DRY-RUN: Platinumone Business Services Limited -> nse=None bse=543352
+DRY-RUN: MRP Agro Limited -> nse=None bse=543262
+DRY-RUN: G M Polyplast Limited -> nse=None bse=543239
+DRY-RUN: Chandra Bhagat Pharma Ltd -> nse=None bse=542934
+DRY-RUN: Shree Ram Twistex Limited -> nse=SRTL bse=None
+DRY-RUN: Fractal Analytics Limited -> nse=FRACTAL bse=None
+DRY-RUN: Bharat Coking Coal Limited -> nse=BHARATCOAL bse=None
+DRY-RUN: Gujarat Kidney And Super Speciality Limited -> nse=GKSL bse=None
+DRY-RUN: KSH International Limited -> nse=KSHINTL bse=None
+DRY-RUN: ICICI Prudential Asset Management Company Limited -> nse=ICICIAMC bse=None
+DRY-RUN: Park Medi World Limited -> nse=PARKHOSPS bse=None
+DRY-RUN: Nephrocare Health Services Limited -> nse=NEPHROPLUS bse=None
+DRY-RUN: Corona Remedies Limited -> nse=CORONA bse=None
+DRY-RUN: Wakefit Innovations Limited -> nse=WAKEFIT bse=None
+DRY-RUN: Excelsoft Technologies Limited -> nse=EXCELSOFT bse=None
+DRY-RUN: Capillary Technologies India Limited -> nse=CAPILLARY bse=None
+DRY-RUN: Fujiyama Power Systems Limited -> nse=UTLSOLAR bse=None
+DRY-RUN: Tenneco Clean Air India Limited -> nse=TENNIND bse=None
+DRY-RUN: Emmvee Photovoltaic Power Limited -> nse=EMMVEE bse=None
+DRY-RUN: Lenskart Solutions Limited -> nse=LENSKART bse=None
+DRY-RUN: Studds Accessories Limited -> nse=STUDDS bse=None
+DRY-RUN: Canara HSBC Life Insurance Company Limited -> nse=CANHLIFE bse=None
+DRY-RUN: Rubicon Research Limited -> nse=RUBICON bse=None
+DRY-RUN: Canara Robeco Asset Management Company Limited -> nse=CRAMC bse=None
+DRY-RUN: LG Electronics India Limited -> nse=LGEINDIA bse=None
+DRY-RUN: WeWork India Management Limited -> nse=WEWORK bse=None
+DRY-RUN: Om Freight Forwarders Limited -> nse=OMFREIGHT bse=None
+DRY-RUN: Advance Agrolife Limited -> nse=ADVANCE bse=None
+DRY-RUN: Fabtech Technologies Limited -> nse=FABTECH bse=None
+DRY-RUN: Trualt Bioenergy Limited -> nse=TRUALT bse=None
+DRY-RUN: Epack Prefab Technologies Limited -> nse=EPACKPEB bse=None
+DRY-RUN: Jain Resource Recycling Limited -> nse=JAINREC bse=None
+DRY-RUN: Jaro Institute Of Technology Management And Research Limited -> nse=JARO bse=None
+DRY-RUN: Solarworld Energy Solutions Limited -> nse=SOLARWORLD bse=None
+DRY-RUN: Anand Rathi Share and Stock Brokers Limited -> nse=ARSSBL bse=None
+DRY-RUN: Seshaasai Technologies Limited -> nse=STYL bse=None
+DRY-RUN: Ganesh Consumer Products Limited -> nse=GANESHCP bse=None
+DRY-RUN: Atlanta Electricals Limited -> nse=ATLANTAELE bse=None
+DRY-RUN: Saatvik Green Energy Limited -> nse=SAATVIKGL bse=None
+DRY-RUN: iValue Infosolutions Limited -> nse=IVALUE bse=None
+DRY-RUN: Euro Pratik Sales Limited -> nse=EUROPRATIK bse=None
+DRY-RUN: Shringar House of Mangalsutra Limited -> nse=SHRINGARMS bse=None
+DRY-RUN: Dev Accelerator Limited -> nse=DEVX bse=None
+DRY-RUN: Amanta Healthcare Limited -> nse=AMANTA bse=None
+DRY-RUN: Anlon Healthcare Limited -> nse=AHCL bse=None
+DRY-RUN: Vikran Engineering Limited -> nse=VIKRAN bse=None
+DRY-RUN: Mangal Electrical Industries Limited -> nse=MEIL bse=None
+DRY-RUN: Shreeji Shipping Global Limited -> nse=SHREEJISPG bse=None
+DRY-RUN: Regaal Resources Limited -> nse=REGAAL bse=None
+DRY-RUN: Bluestone Jewellery And Lifestyle Limited -> nse=BLUESTONE bse=None
+DRY-RUN: All Time Plastics Limited -> nse=ALLTIME bse=None
+DRY-RUN: Highway Infrastructure Limited -> nse=HILINFRA bse=None
+DRY-RUN: Smartworks Coworking Spaces Limited -> nse=SMARTWORKS bse=None
+DRY-RUN: DEE Development Engineers Limited -> nse=DEEDEV bse=None
+DRY-RUN: Akme Fintrade India Limited -> nse=AFIL bse=None
+DRY-RUN: Le Travenues Technology Limited -> nse=IXIGO bse=None
+DRY-RUN: Kronox Lab Sciences Limited -> nse=KRONOX bse=None
+DRY-RUN: Awfis Space Solutions Limited -> nse=AWFIS bse=None
+DRY-RUN: Go Digit General Insurance Limited -> nse=GODIGIT bse=None
+DRY-RUN: Aadhar Housing Finance Limited -> nse=AADHARHFC bse=None
+DRY-RUN: TBO Tek Limited -> nse=TBOTEK bse=None
+DRY-RUN: Indegene Limited -> nse=INDGN bse=None
+DRY-RUN: JNK India Limited -> nse=JNKINDIA bse=None
+DRY-RUN: JG Chemicals Limited -> nse=JGCHEM bse=None
+DRY-RUN: Apeejay Surrendra Park Hotels Limited -> nse=PARKHOTELS bse=None
+
+Summary: written=442 (dry-run=True), no_db_match=0, multi_db_match=0
