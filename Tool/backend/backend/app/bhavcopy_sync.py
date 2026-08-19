@@ -128,6 +128,19 @@ _LISTED_WINDOW_CALENDAR_DAYS = 20
 # picked to comfortably clear a long weekend. Tune freely.
 GAP_FILL_GRACE_DAYS = 4
 
+# FIX (2026-08-19): after this many failed Indian API lookups for the SAME
+# (company, horizon) -- i.e. the API has genuinely returned "no price"
+# this many separate runs -- stop spending an attempt on it every single
+# run. Confirmed via production logs: the same ~11 companies (Ardee,
+# LAPL, etc.) failed identically every run with no early-stop, meaning
+# these are real "not found" responses, not transient/rate-limit errors --
+# so retrying them daily forever was pure waste, crowding out companies
+# that could actually be filled. GAP_FILL_RETRY_COOLDOWN_DAYS lets a
+# skipped one be tried again eventually (data can catch up -- an illiquid
+# SME counter may trade a few weeks later), rather than blacklisting for good.
+GAP_FILL_MAX_ATTEMPTS = 3
+GAP_FILL_RETRY_COOLDOWN_DAYS = 14
+
 
 # --- previous trading day -----------------------------------------------
 def _previous_trading_day(as_of: datetime.date | None = None) -> datetime.date:
@@ -481,6 +494,54 @@ def _update_if_null(conn, company_name: str, column: str, price: float) -> bool:
     return cur.rowcount > 0
 
 
+# --- FIX (2026-08-19): per-(company, horizon) attempt tracking -------------
+# New, dedicated table rather than columns bolted onto ipo_master_records --
+# this is bookkeeping for the gap-fill job itself, not IPO data, and doesn't
+# need PRAGMA table_info gating like the nse_symbol column did.
+def _ensure_gap_fill_attempts_table(conn) -> None:
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS price_gap_fill_attempts ("
+        "company_name TEXT NOT NULL, column_name TEXT NOT NULL, "
+        "attempts INTEGER NOT NULL DEFAULT 0, last_attempted TEXT, "
+        "PRIMARY KEY (company_name, column_name))"
+    )
+
+
+def _gap_fill_should_skip(conn, company_name: str, column: str, today: datetime.date) -> bool:
+    """True once this (company, horizon) has failed GAP_FILL_MAX_ATTEMPTS+
+    times AND the last attempt was within the cooldown window -- i.e. it's
+    a known-stuck cell that isn't due for a retry yet."""
+    row = conn.execute(
+        "SELECT attempts, last_attempted FROM price_gap_fill_attempts "
+        "WHERE company_name = ? AND column_name = ?",
+        (company_name, column),
+    ).fetchone()
+    if not row or row["attempts"] < GAP_FILL_MAX_ATTEMPTS or not row["last_attempted"]:
+        return False
+    last = datetime.date.fromisoformat(row["last_attempted"][:10])
+    return (today - last).days < GAP_FILL_RETRY_COOLDOWN_DAYS
+
+
+def _gap_fill_record_attempt(conn, company_name: str, column: str, today: datetime.date) -> None:
+    conn.execute(
+        "INSERT INTO price_gap_fill_attempts (company_name, column_name, attempts, last_attempted) "
+        "VALUES (?, ?, 1, ?) "
+        "ON CONFLICT(company_name, column_name) DO UPDATE SET "
+        "attempts = attempts + 1, last_attempted = excluded.last_attempted",
+        (company_name, column, today.isoformat()),
+    )
+
+
+def _gap_fill_clear_attempts(conn, company_name: str, column: str) -> None:
+    """Called on a successful fill -- clears any stale failure history for
+    this cell so a company that eventually gets a price isn't left with a
+    dangling attempts row (harmless if it stays, just tidy)."""
+    conn.execute(
+        "DELETE FROM price_gap_fill_attempts WHERE company_name = ? AND column_name = ?",
+        (company_name, column),
+    )
+
+
 def run_bhavcopy_sync(target_date: datetime.date | None = None) -> dict:
     """Pass: previous trading day's close -> whichever price_dayN column
     is due for each trackable company, NULL cells only. Same
@@ -604,68 +665,106 @@ def backfill_price_gaps() -> dict:
     horizon's due date is more than GAP_FILL_GRACE_DAYS in the past AND
     still NULL, spend ONE Indian API call to fill it -- not a routine
     per-refresh call, so the 500/month budget only goes to genuine gaps
-    (illiquid SME counters, trading-halt days), same as item 6 asks."""
+    (illiquid SME counters, trading-halt days), same as item 6 asks.
+
+    FIX (2026-08-19): two bugs fixed together, found via production logs
+    showing the same ~11 companies (Ardee, LAPL, etc.) failing identically
+    every run with only 1 fill (Juniper Green Energy), run completing
+    normally each time (no early quota-exhaustion stop):
+
+    1. THE REAL BUG: on a genuine "no price found" result, the old code
+       did `failures += 1; continue` -- that `continue` re-entered the
+       INNER loop over this SAME company's remaining horizons (day2, day3,
+       day5, day10), not the outer loop over companies, despite the
+       trailing `break` a few lines down (in the docstring/comment above
+       it) documenting the intent as "one horizon per company per run".
+       So one permanently-stuck company burned an API call per missing
+       horizon EVERY run, before the pass ever reached a company that
+       could actually be filled. Fixed: `break` instead of `continue`.
+    2. A permanently-unresolvable company (bad name-match against the
+       Indian API, delisted, genuinely never traded on the due day) had
+       no way to age out -- it'd be retried forever even after (1) is
+       fixed. Added price_gap_fill_attempts tracking: after
+       GAP_FILL_MAX_ATTEMPTS failures for the same (company, horizon),
+       skip it for GAP_FILL_RETRY_COOLDOWN_DAYS before trying again."""
     today = datetime.date.today()
     companies, _ = get_trackable_companies(as_of=today)
     if not companies:
-        return {"filled": 0, "skipped_not_due": 0, "api_failures": 0, "filled_companies": []}
+        return {"filled": 0, "skipped_not_due": 0, "skipped_unresolvable": 0,
+                "api_failures": 0, "filled_companies": []}
 
-    filled, skipped, failures = 0, 0, 0
+    conn = db.get_connection()
+    _ensure_gap_fill_attempts_table(conn)
+    conn.commit()
+
+    filled, skipped, unresolvable, failures = 0, 0, 0, 0
     filled_companies = set()
-    for row in companies:
-        listing_date = datetime.date.fromisoformat(row["listing_date"][:10])
-        for elapsed_due, column in sorted(HORIZON_COLUMNS.items()):
-            if row.get(column) is not None:
-                continue
-            # Rough due-date estimate for this horizon: calendar days as a
-            # stand-in for trading sessions. Good enough for a grace-period
-            # check (GAP_FILL_GRACE_DAYS already builds in slack for
-            # holidays/weekends); if tighter accuracy is ever needed, the
-            # real NSE session calendar (_NSE, imported above) could instead
-            # be walked forward from listing_date to find the Nth session.
-            due_date = listing_date + datetime.timedelta(days=elapsed_due)
-            if (today - due_date).days <= GAP_FILL_GRACE_DAYS:
-                skipped += 1
-                break  # earlier horizons aren't due yet either; later ones for this company skip too
-            try:
-                history = indianapi.fetch_historical_prices(row["company_name"])
-                prices = indianapi.prices_by_offset(history, row["listing_date"])
-                price = prices.get(column)
-                if price is None:
-                    failures += 1
+    try:
+        for row in companies:
+            listing_date = datetime.date.fromisoformat(row["listing_date"][:10])
+            for elapsed_due, column in sorted(HORIZON_COLUMNS.items()):
+                if row.get(column) is not None:
                     continue
-                conn = db.get_connection()
+                # Rough due-date estimate for this horizon: calendar days as
+                # a stand-in for trading sessions. Good enough for a grace-
+                # period check (GAP_FILL_GRACE_DAYS already builds in slack
+                # for holidays/weekends); if tighter accuracy is ever
+                # needed, the real NSE session calendar (_NSE, imported
+                # above) could instead be walked forward from listing_date
+                # to find the Nth session.
+                due_date = listing_date + datetime.timedelta(days=elapsed_due)
+                if (today - due_date).days <= GAP_FILL_GRACE_DAYS:
+                    skipped += 1
+                    break  # earlier horizons aren't due yet either; later ones for this company skip too
+                if _gap_fill_should_skip(conn, row["company_name"], column, today):
+                    unresolvable += 1
+                    break  # known-stuck cell, still in cooldown -- don't burn a call, don't
+                    # fall through to this company's later horizons either (same one-shot
+                    # per company per run budget as a real attempt below).
                 try:
+                    history = indianapi.fetch_historical_prices(row["company_name"])
+                    prices = indianapi.prices_by_offset(history, row["listing_date"])
+                    price = prices.get(column)
+                    if price is None:
+                        failures += 1
+                        _gap_fill_record_attempt(conn, row["company_name"], column, today)
+                        conn.commit()
+                        break  # FIX: was `continue` -- see docstring bug (1). Move to the
+                        # NEXT COMPANY, not this company's next horizon.
                     if _update_if_null(conn, row["company_name"], column, price):
                         filled += 1
                         filled_companies.add(row["company_name"])
+                    _gap_fill_clear_attempts(conn, row["company_name"], column)
                     conn.commit()
-                finally:
-                    conn.close()
-            except indianapi.IndianAPIError as e:
-                # FIX (2026-08-17): production logs showed this pass making
-                # (and losing) 7 individual Indian API calls in one run, all
-                # failing with the SAME "rate limit / credits exhausted"
-                # error -- that error is account-wide, not per-company, so
-                # once it's seen once, every remaining call this run is
-                # guaranteed to fail too. Stop the whole pass immediately
-                # instead of wasting the rest of the due companies' one
-                # attempt each -- they'll get picked up on the next run once
-                # quota is available again, same as if this run had never
-                # happened.
-                logger.warning(
-                    "Gap-fill Indian API call failed for %r/%s: %s -- stopping this "
-                    "run early (quota is account-wide, not per-company).",
-                    row["company_name"], column, e,
-                )
-                failures += 1
-                result = {"filled": filled, "skipped_not_due": skipped, "api_failures": failures,
-                           "filled_companies": sorted(filled_companies)}
-                logger.info("bhavcopy_sync.backfill_price_gaps: %s (stopped early)", result)
-                return result
-            break  # one horizon (and one API call) per company per run, oldest-due first
+                except indianapi.IndianAPIError as e:
+                    # FIX (2026-08-17): production logs showed this pass making
+                    # (and losing) 7 individual Indian API calls in one run, all
+                    # failing with the SAME "rate limit / credits exhausted"
+                    # error -- that error is account-wide, not per-company, so
+                    # once it's seen once, every remaining call this run is
+                    # guaranteed to fail too. Stop the whole pass immediately
+                    # instead of wasting the rest of the due companies' one
+                    # attempt each -- they'll get picked up on the next run once
+                    # quota is available again, same as if this run had never
+                    # happened. Deliberately does NOT count toward
+                    # price_gap_fill_attempts -- this is quota exhaustion, not
+                    # evidence the (company, horizon) is unresolvable.
+                    logger.warning(
+                        "Gap-fill Indian API call failed for %r/%s: %s -- stopping this "
+                        "run early (quota is account-wide, not per-company).",
+                        row["company_name"], column, e,
+                    )
+                    failures += 1
+                    result = {"filled": filled, "skipped_not_due": skipped,
+                              "skipped_unresolvable": unresolvable, "api_failures": failures,
+                              "filled_companies": sorted(filled_companies)}
+                    logger.info("bhavcopy_sync.backfill_price_gaps: %s (stopped early)", result)
+                    return result
+                break  # one horizon (and one API call) per company per run, oldest-due first
+    finally:
+        conn.close()
 
-    result = {"filled": filled, "skipped_not_due": skipped, "api_failures": failures,
-              "filled_companies": sorted(filled_companies)}
+    result = {"filled": filled, "skipped_not_due": skipped, "skipped_unresolvable": unresolvable,
+              "api_failures": failures, "filled_companies": sorted(filled_companies)}
     logger.info("bhavcopy_sync.backfill_price_gaps: %s", result)
     return result
