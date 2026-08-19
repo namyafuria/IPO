@@ -156,6 +156,64 @@ def _previous_trading_day(as_of: datetime.date | None = None) -> datetime.date:
     return prior[-1]
 
 
+# FIX (2026-08-19, backfill rewrite): exact due-date for a given horizon,
+# via the same shared _NSE calendar, instead of backfill_price_gaps()'s old
+# `listing_date + timedelta(days=elapsed_due)` calendar-day estimate. That
+# estimate was only ever used for a grace-period check, so being off by a
+# few days didn't matter -- but now this same due-date is also the exact
+# date backfill fetches a HISTORICAL bhavcopy for, where being off by even
+# one day means fetching the wrong day's file entirely. n=1 is listing day
+# itself, matching this project's confirmed price_dayN convention (day1 =
+# close ON the listing day, not the day after).
+def _nth_trading_session(listing_date: datetime.date, n: int) -> datetime.date:
+    sessions = _NSE.valid_days(
+        start_date=listing_date,
+        end_date=listing_date + datetime.timedelta(days=n * 3 + 15),  # generous margin for holidays
+    )
+    days = [ts.date() for ts in sessions if ts.date() >= listing_date]
+    if len(days) < n:
+        raise RuntimeError(
+            f"Fewer than {n} NSE trading sessions found on/after {listing_date.isoformat()}."
+        )
+    return days[n - 1]
+
+
+# FIX (2026-08-19, backfill rewrite): per-date cache for historical bhavcopy
+# fetches within a single backfill_price_gaps() run. Different companies
+# almost always have different listing_date -> different due dates, so this
+# won't collapse many fetches into one most of the time, but it's a free
+# safeguard against re-fetching the same date twice if two companies' due
+# dates do happen to coincide (e.g. two IPOs listed the same week both
+# having their Day5 due today).
+def _get_historical_bhavcopy(
+    date: datetime.date, cache: dict[datetime.date, tuple[dict, dict, dict]]
+) -> tuple[dict[str, float], dict[str, float], dict[str, float]]:
+    """Returns (nse_map, bse_map, nse_symbol_price_map) for `date`, built
+    the same way run_bhavcopy_sync() builds them for "today" -- reused here
+    unchanged so backfilled cells are matched by the exact same rules
+    (isin first, nse_symbol fallback) as the routine daily sync."""
+    if date in cache:
+        return cache[date]
+    nse_map: dict[str, float] = {}
+    nse_symbol_price_map: dict[str, float] = {}
+    for row in _fetch_nse_bhavcopy_rows(date):
+        isin = (row.get("ISIN") or "").strip()
+        close = row.get("ClsPric")
+        symbol = (row.get("TckrSymb") or "").strip()
+        if close:
+            try:
+                close_val = float(close)
+            except ValueError:
+                continue
+            nse_map[isin] = close_val
+            if symbol:
+                nse_symbol_price_map[symbol] = close_val
+    bse_map = fetch_bse_bhavcopy(date)
+    result = (nse_map, bse_map, nse_symbol_price_map)
+    cache[date] = result
+    return result
+
+
 # --- fetch + parse ---------------------------------------------------------
 def _fetch_zip_csv(url: str, extra_headers: dict | None = None, session=None) -> str | None:
     headers = {
@@ -658,81 +716,113 @@ def run_bhavcopy_sync(target_date: datetime.date | None = None) -> dict:
     return result
 
 
-# --- item 6: bounded gap-fill for rows bhavcopy never got a row for --------
+# --- item 6: bounded gap-fill for rows the routine daily sync never caught -
 def backfill_price_gaps() -> dict:
-    """For each trackable company's next-due price_dayN cell (the earliest
-    HORIZON_COLUMNS entry still NULL for that company), only once that
-    horizon's due date is more than GAP_FILL_GRACE_DAYS in the past AND
-    still NULL, spend ONE Indian API call to fill it -- not a routine
-    per-refresh call, so the 500/month budget only goes to genuine gaps
-    (illiquid SME counters, trading-halt days), same as item 6 asks.
+    """For every trackable company's still-NULL price_dayN cells whose due
+    date has already passed, first try a HISTORICAL bhavcopy for that exact
+    due date (bhavcopy is free/unrated, so every due horizon is attempted,
+    not just one per run) -- only past GAP_FILL_GRACE_DAYS, and only if
+    bhavcopy genuinely has no row for that company on that date, does this
+    fall back to ONE rate-limited Indian API call per company per run.
 
-    FIX (2026-08-19): two bugs fixed together, found via production logs
-    showing the same ~11 companies (Ardee, LAPL, etc.) failing identically
-    every run with only 1 fill (Juniper Green Energy), run completing
-    normally each time (no early quota-exhaustion stop):
+    FIX (2026-08-19, backfill rewrite): this replaces the Indian-API-only
+    version of this function. Root cause it fixes (see project notes):
+    run_bhavcopy_sync() only ever fetches the CURRENT day's bhavcopy and
+    fills whichever single column is due TODAY -- it never revisits a day
+    that already passed. A company whose Day1 came due before its isin/
+    nse_symbol was backfilled (or before this job existed) was therefore
+    permanently unreachable by the daily sync, no matter how many days went
+    by -- its only path forward was this function, which previously only
+    knew how to call the Indian API (slow, rate-limited to ~500/month,
+    matched by company name rather than isin/symbol). Since NSE/BSE publish
+    HISTORICAL bhavcopy files by date on request, the exact same trusted,
+    free, exact-match path run_bhavcopy_sync() uses for "today" can be
+    pointed at any past due-date instead -- so this now tries that first for
+    every stuck cell, and the Indian API becomes the genuine last resort
+    (illiquid counters / trading halts on the exact due date) it was always
+    meant to be, rather than the only mechanism.
 
-    1. THE REAL BUG: on a genuine "no price found" result, the old code
-       did `failures += 1; continue` -- that `continue` re-entered the
-       INNER loop over this SAME company's remaining horizons (day2, day3,
-       day5, day10), not the outer loop over companies, despite the
-       trailing `break` a few lines down (in the docstring/comment above
-       it) documenting the intent as "one horizon per company per run".
-       So one permanently-stuck company burned an API call per missing
-       horizon EVERY run, before the pass ever reached a company that
-       could actually be filled. Fixed: `break` instead of `continue`.
-    2. A permanently-unresolvable company (bad name-match against the
-       Indian API, delisted, genuinely never traded on the due day) had
-       no way to age out -- it'd be retried forever even after (1) is
-       fixed. Added price_gap_fill_attempts tracking: after
-       GAP_FILL_MAX_ATTEMPTS failures for the same (company, horizon),
-       skip it for GAP_FILL_RETRY_COOLDOWN_DAYS before trying again."""
+    Two earlier bugs (2026-08-19, still fixed here, now scoped to the API
+    fallback path only):
+    1. On a genuine "no price found" API result, the loop must move to the
+       NEXT COMPANY, not keep trying this same company's later horizons in
+       the same run (`break`, not `continue`) -- one stuck company must not
+       burn multiple calls before the pass reaches a company that could
+       actually be filled.
+    2. A permanently-unresolvable (company, horizon) needs to age out --
+       price_gap_fill_attempts tracking skips it for
+       GAP_FILL_RETRY_COOLDOWN_DAYS after GAP_FILL_MAX_ATTEMPTS failures,
+       rather than retrying it forever."""
     today = datetime.date.today()
     companies, _ = get_trackable_companies(as_of=today)
+    empty_result = {"filled": 0, "filled_via_bhavcopy": 0, "filled_via_api": 0,
+                     "skipped_not_due": 0, "skipped_unresolvable": 0,
+                     "api_failures": 0, "filled_companies": []}
     if not companies:
-        return {"filled": 0, "skipped_not_due": 0, "skipped_unresolvable": 0,
-                "api_failures": 0, "filled_companies": []}
+        return empty_result
 
     conn = db.get_connection()
     _ensure_gap_fill_attempts_table(conn)
     conn.commit()
 
-    filled, skipped, unresolvable, failures = 0, 0, 0, 0
+    filled_bhavcopy, filled_api, skipped, unresolvable, failures = 0, 0, 0, 0, 0
     filled_companies = set()
+    bhavcopy_cache: dict[datetime.date, tuple] = {}
     try:
         for row in companies:
             listing_date = datetime.date.fromisoformat(row["listing_date"][:10])
+            api_attempted_for_company = False  # one Indian API call per company per run, same budget as before
             for elapsed_due, column in sorted(HORIZON_COLUMNS.items()):
                 if row.get(column) is not None:
                     continue
-                # Rough due-date estimate for this horizon: calendar days as
-                # a stand-in for trading sessions. Good enough for a grace-
-                # period check (GAP_FILL_GRACE_DAYS already builds in slack
-                # for holidays/weekends); if tighter accuracy is ever
-                # needed, the real NSE session calendar (_NSE, imported
-                # above) could instead be walked forward from listing_date
-                # to find the Nth session.
-                due_date = listing_date + datetime.timedelta(days=elapsed_due)
-                if (today - due_date).days <= GAP_FILL_GRACE_DAYS:
+                try:
+                    due_date = _nth_trading_session(listing_date, elapsed_due)
+                except RuntimeError:
+                    # Calendar doesn't have enough sessions yet after listing_date
+                    # to know this horizon's due date -- treat like not-due-yet.
                     skipped += 1
-                    break  # earlier horizons aren't due yet either; later ones for this company skip too
+                    break
+                if due_date >= today:
+                    skipped += 1
+                    break  # earlier horizons weren't due yet either (monotonic in elapsed_due),
+                    # so later ones for this company aren't due yet either -- next company.
+
+                # --- try 1: historical bhavcopy for the exact due date, free/unrated ---
+                nse_map, bse_map, nse_symbol_price_map = _get_historical_bhavcopy(due_date, bhavcopy_cache)
+                price = _match_price(row, nse_map, bse_map, nse_symbol_price_map)
+                if price is not None:
+                    if _update_if_null(conn, row["company_name"], column, price):
+                        filled_bhavcopy += 1
+                        filled_companies.add(row["company_name"])
+                    _gap_fill_clear_attempts(conn, row["company_name"], column)
+                    conn.commit()
+                    continue  # bhavcopy costs nothing -- keep checking this company's other due horizons
+
+                # --- try 2: bhavcopy had no row for this company on this date ---
+                if (today - due_date).days <= GAP_FILL_GRACE_DAYS:
+                    # Too recent to conclude bhavcopy is genuinely missing it --
+                    # could just be a same-week fetch timing thing. Give it more
+                    # runs before spending an API call.
+                    skipped += 1
+                    continue
+                if api_attempted_for_company:
+                    continue  # already spent this run's one API call on this company
                 if _gap_fill_should_skip(conn, row["company_name"], column, today):
                     unresolvable += 1
-                    break  # known-stuck cell, still in cooldown -- don't burn a call, don't
-                    # fall through to this company's later horizons either (same one-shot
-                    # per company per run budget as a real attempt below).
+                    continue
+                api_attempted_for_company = True
                 try:
                     history = indianapi.fetch_historical_prices(row["company_name"])
                     prices = indianapi.prices_by_offset(history, row["listing_date"])
-                    price = prices.get(column)
-                    if price is None:
+                    api_price = prices.get(column)
+                    if api_price is None:
                         failures += 1
                         _gap_fill_record_attempt(conn, row["company_name"], column, today)
                         conn.commit()
-                        break  # FIX: was `continue` -- see docstring bug (1). Move to the
-                        # NEXT COMPANY, not this company's next horizon.
-                    if _update_if_null(conn, row["company_name"], column, price):
-                        filled += 1
+                        continue  # this company's one API attempt is spent; other due
+                        # horizons for it still get tried via bhavcopy above, next loop turn
+                    if _update_if_null(conn, row["company_name"], column, api_price):
+                        filled_api += 1
                         filled_companies.add(row["company_name"])
                     _gap_fill_clear_attempts(conn, row["company_name"], column)
                     conn.commit()
@@ -750,21 +840,24 @@ def backfill_price_gaps() -> dict:
                     # price_gap_fill_attempts -- this is quota exhaustion, not
                     # evidence the (company, horizon) is unresolvable.
                     logger.warning(
-                        "Gap-fill Indian API call failed for %r/%s: %s -- stopping this "
-                        "run early (quota is account-wide, not per-company).",
+                        "Gap-fill Indian API call failed for %r/%s: %s -- stopping API "
+                        "fallback for the rest of this run (quota is account-wide, not "
+                        "per-company). Bhavcopy-based fills already made this run are kept.",
                         row["company_name"], column, e,
                     )
                     failures += 1
-                    result = {"filled": filled, "skipped_not_due": skipped,
-                              "skipped_unresolvable": unresolvable, "api_failures": failures,
-                              "filled_companies": sorted(filled_companies)}
-                    logger.info("bhavcopy_sync.backfill_price_gaps: %s (stopped early)", result)
+                    result = {"filled": filled_bhavcopy + filled_api,
+                              "filled_via_bhavcopy": filled_bhavcopy, "filled_via_api": filled_api,
+                              "skipped_not_due": skipped, "skipped_unresolvable": unresolvable,
+                              "api_failures": failures, "filled_companies": sorted(filled_companies)}
+                    logger.info("bhavcopy_sync.backfill_price_gaps: %s (API fallback stopped early)", result)
                     return result
-                break  # one horizon (and one API call) per company per run, oldest-due first
     finally:
         conn.close()
 
-    result = {"filled": filled, "skipped_not_due": skipped, "skipped_unresolvable": unresolvable,
+    result = {"filled": filled_bhavcopy + filled_api,
+              "filled_via_bhavcopy": filled_bhavcopy, "filled_via_api": filled_api,
+              "skipped_not_due": skipped, "skipped_unresolvable": unresolvable,
               "api_failures": failures, "filled_companies": sorted(filled_companies)}
     logger.info("bhavcopy_sync.backfill_price_gaps: %s", result)
     return result
