@@ -186,12 +186,16 @@ def _nth_trading_session(listing_date: datetime.date, n: int) -> datetime.date:
 # dates do happen to coincide (e.g. two IPOs listed the same week both
 # having their Day5 due today).
 def _get_historical_bhavcopy(
-    date: datetime.date, cache: dict[datetime.date, tuple[dict, dict, dict]]
-) -> tuple[dict[str, float], dict[str, float], dict[str, float]]:
-    """Returns (nse_map, bse_map, nse_symbol_price_map) for `date`, built
-    the same way run_bhavcopy_sync() builds them for "today" -- reused here
-    unchanged so backfilled cells are matched by the exact same rules
-    (isin first, nse_symbol fallback) as the routine daily sync."""
+    date: datetime.date, cache: dict[datetime.date, tuple[dict, dict, dict, dict]]
+) -> tuple[dict[str, float], dict[str, float], dict[str, float], dict[str, float]]:
+    """Returns (nse_map, bse_map, nse_symbol_price_map, bse_script_price_map)
+    for `date`, built the same way run_bhavcopy_sync() builds them for
+    "today" -- reused here unchanged so backfilled cells are matched by
+    the exact same rules (isin first, nse_symbol / bse_script_code
+    fallback) as the routine daily sync.
+
+    FIX (2026-08-20): added bse_script_price_map (4th tuple element) --
+    see fetch_bse_bhavcopy()'s docstring."""
     if date in cache:
         return cache[date]
     nse_map: dict[str, float] = {}
@@ -208,8 +212,8 @@ def _get_historical_bhavcopy(
             nse_map[isin] = close_val
             if symbol:
                 nse_symbol_price_map[symbol] = close_val
-    bse_map = fetch_bse_bhavcopy(date)
-    result = (nse_map, bse_map, nse_symbol_price_map)
+    bse_map, bse_script_price_map = fetch_bse_bhavcopy(date)
+    result = (nse_map, bse_map, nse_symbol_price_map, bse_script_price_map)
     cache[date] = result
     return result
 
@@ -391,9 +395,18 @@ def _fetch_text(url: str, extra_headers: dict | None = None, session=None) -> st
     return text
 
 
-def fetch_bse_bhavcopy(date: datetime.date) -> dict[str, float]:
-    """{isin: close_price} for BSE equities on `date`, keyed by ISIN where
-    present.
+def fetch_bse_bhavcopy(date: datetime.date) -> tuple[dict[str, float], dict[str, float]]:
+    """({isin: close_price}, {bse_script_code: close_price}) for BSE
+    equities on `date`.
+
+    FIX (2026-08-20): old docstring's claim "BSE bhavcopy carries no
+    scrip code" was WRONG -- confirmed directly against a real BSE
+    BhavCopy_BSE_CM file: FinInstrmId IS the scrip code (544863 for LAPL
+    Automotive, 544859 for G.V.Electricals -- both match
+    ipo_master_records.bse_script_code exactly). This was blocking price
+    backfill for every trackable company whose row has bse_script_code
+    but no isin. Return type changed from a single dict to a tuple --
+    every call site below updated together.
 
     FIX (2026-08-17), round 3: the URL itself was dead: BSE's
     `EQ_ISINCODE_<DDMMYY>.zip` (this function's original URL) was
@@ -442,27 +455,35 @@ def fetch_bse_bhavcopy(date: datetime.date) -> dict[str, float]:
         "Accept": "*/*",
     }, session=session)
     if not text:
-        return {}
-    out = {}
+        return {}, {}
+    isin_out = {}
+    script_out = {}
     for row in csv.DictReader(io.StringIO(text)):
         if row.get("FinInstrmTp") != "STK":
             continue
         isin = (row.get("ISIN") or "").strip()
+        script_code = (row.get("FinInstrmId") or "").strip()
         close = row.get("ClsPric")
-        if isin and close:
-            try:
-                out[isin] = float(close)
-            except ValueError:
-                continue
-    logger.info("BSE bhavcopy %s: %d ISINs parsed.", date.isoformat(), len(out))
-    return out
+        if not close:
+            continue
+        try:
+            close_val = float(close)
+        except ValueError:
+            continue
+        if isin:
+            isin_out[isin] = close_val
+        if script_code:
+            script_out[script_code] = close_val
+    logger.info("BSE bhavcopy %s: %d ISINs, %d script codes parsed.",
+                date.isoformat(), len(isin_out), len(script_out))
+    return isin_out, script_out
 
 
 def build_close_price_map(date: datetime.date) -> dict[str, float]:
     """Merges NSE + BSE for `date`, BSE preferred on conflict (per your
     existing standardization -- see module docstring point (a))."""
     nse = fetch_nse_bhavcopy(date)
-    bse = fetch_bse_bhavcopy(date)
+    bse, _bse_script_map = fetch_bse_bhavcopy(date)
     merged = dict(nse)
     merged.update(bse)  # BSE wins on overlap
     return merged
@@ -508,29 +529,21 @@ def get_trackable_companies(as_of: datetime.date | None = None) -> tuple[list[di
 
 
 def _match_price(row: dict, nse_map: dict, bse_map: dict,
-                  nse_symbol_price_map: dict | None = None) -> float | None:
+                  nse_symbol_price_map: dict | None = None,
+                  bse_script_price_map: dict | None = None) -> float | None:
     """isin-only exact match first -- no fuzzy/difflib (see db.strict_match()'s
     docstring on why that's banned for cross-company data joins in this
     project).
 
-    FIX (2026-08-18, item 2, see FIX LOG point (e) above): removed the
-    bse_script_code fallback that used to sit here (`code in bse_map`) --
-    bse_map is keyed by ISIN (fetch_bse_bhavcopy() builds it as
-    {isin: close}), so a BSE script code could never appear as a key in
-    it; that branch was dead code that could never match anything, not a
-    working fallback.
+    FIX (2026-08-19, Step 6): nse_symbol exact-match fallback for rows
+    still missing isin.
 
-    FIX (2026-08-19, Step 6): added an nse_symbol exact-match fallback for
-    rows still missing isin. Step 5's symbol-matcher project backfilled
-    nse_symbol/bse_script_code (not isin) for 442 rows -- without this
-    fallback, none of that work was reachable from this price-matching
-    job at all, since only isin was ever checked. NSE's UDiFF bhavcopy
-    carries TckrSymb natively, so this costs nothing extra to build (see
-    nse_symbol_price_map construction in run_bhavcopy_sync()). BSE-side
-    (bse_script_code) fallback stays out -- BSE's actual scrip-code column
-    name is still unconfirmed (see module docstring point (a)); guessing
-    at it risks silently matching the wrong row, which is exactly what
-    exact-only matching in this project exists to avoid."""
+    FIX (2026-08-20): bse_script_code exact-match fallback added back in.
+    The 2026-08-18 removal assumed BSE bhavcopy carries no scrip code at
+    all -- confirmed WRONG against a real BSE file (FinInstrmId is the
+    scrip code, matches ipo_master_records.bse_script_code exactly for
+    both LAPL Automotive and G.V.Electricals). fetch_bse_bhavcopy() now
+    returns a script-code map alongside the isin map for exactly this."""
     isin = row.get("isin")
     merged = {**nse_map, **bse_map}
     if isin and isin in merged:
@@ -539,6 +552,12 @@ def _match_price(row: dict, nse_map: dict, bse_map: dict,
     nse_symbol = row.get("nse_symbol")
     if nse_symbol and nse_symbol_price_map and nse_symbol in nse_symbol_price_map:
         return nse_symbol_price_map[nse_symbol]
+
+    bse_script_code = row.get("bse_script_code")
+    if bse_script_code and bse_script_price_map:
+        bse_script_code = str(bse_script_code).strip()
+        if bse_script_code in bse_script_price_map:
+            return bse_script_price_map[bse_script_code]
 
     return None
 
@@ -633,7 +652,9 @@ def run_bhavcopy_sync(target_date: datetime.date | None = None) -> dict:
             if close_val is not None:
                 nse_symbol_price_map[symbol] = close_val
     logger.info("NSE bhavcopy %s: %d ISINs parsed.", date.isoformat(), len(nse_map))
-    bse_map = fetch_bse_bhavcopy(date)
+    # FIX (2026-08-20): bse_script_price_map added -- see fetch_bse_bhavcopy()
+    # and _match_price() docstrings.
+    bse_map, bse_script_price_map = fetch_bse_bhavcopy(date)
     price_map = {**nse_map, **bse_map}
 
     companies, elapsed_by_date = get_trackable_companies(as_of=date)
@@ -670,7 +691,8 @@ def run_bhavcopy_sync(target_date: datetime.date | None = None) -> dict:
             column = HORIZON_COLUMNS.get(elapsed)
             if column is not None and row.get(column) is None:
                 try:
-                    price = _match_price(row, nse_map, bse_map, nse_symbol_price_map)
+                    price = _match_price(row, nse_map, bse_map, nse_symbol_price_map,
+                                          bse_script_price_map)
                     if price is None:
                         no_row += 1
                     elif _update_if_null(conn, row["company_name"], column, price):
@@ -788,8 +810,10 @@ def backfill_price_gaps() -> dict:
                     # so later ones for this company aren't due yet either -- next company.
 
                 # --- try 1: historical bhavcopy for the exact due date, free/unrated ---
-                nse_map, bse_map, nse_symbol_price_map = _get_historical_bhavcopy(due_date, bhavcopy_cache)
-                price = _match_price(row, nse_map, bse_map, nse_symbol_price_map)
+                nse_map, bse_map, nse_symbol_price_map, bse_script_price_map = \
+                    _get_historical_bhavcopy(due_date, bhavcopy_cache)
+                price = _match_price(row, nse_map, bse_map, nse_symbol_price_map,
+                                      bse_script_price_map)
                 if price is not None:
                     if _update_if_null(conn, row["company_name"], column, price):
                         filled_bhavcopy += 1

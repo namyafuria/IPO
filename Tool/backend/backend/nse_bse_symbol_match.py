@@ -90,7 +90,13 @@ def normalize_name(name: str) -> str:
 
 
 def _normkey(s: str) -> str:
-    return re.sub(r"\s+", " ", s.strip().upper())
+    # FIX (2026-08-20): NSE SME/Emerge master export uses underscores in
+    # headers (NAME_OF_COMPANY, DATE_OF_LISTING, ISIN_NUMBER) where the
+    # NSE mainboard EQUITY_L.csv uses spaces (NAME OF COMPANY, etc) --
+    # confirmed against real SME_EQUITY_L.csv (all 3 header matches
+    # failed, 0 proposed matches). Underscore now treated same as
+    # whitespace so both header styles resolve the same way.
+    return re.sub(r"[\s_]+", " ", s.strip().upper())
 
 
 def name_prefix_match(a: str, b: str) -> bool:
@@ -146,8 +152,12 @@ def _build_header_map(fieldnames, wanted: dict) -> dict:
     return resolved
 
 
-def load_nse(path: str) -> list[dict]:
-    """NSE EQUITY_L.csv — SYMBOL, NAME OF COMPANY, DATE OF LISTING, ISIN NUMBER"""
+def load_nse(path: str, source_label: str = "NSE") -> list[dict]:
+    """NSE EQUITY_L.csv — SYMBOL, NAME OF COMPANY, DATE OF LISTING, ISIN NUMBER
+
+    FIX (2026-08-20): source_label added so this same loader can also read
+    an NSE SME/Emerge master export (same 4-column schema, different file)
+    -- see main()'s new --nse-sme-csv."""
     rows = []
     with open(path, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
@@ -163,7 +173,7 @@ def load_nse(path: str) -> list[dict]:
         missing = [k for k, v in hmap.items() if v is None]
         if missing:
             print(
-                f"WARNING load_nse: could not find column(s) {missing} "
+                f"WARNING load_nse({source_label}): could not find column(s) {missing} "
                 f"in headers {reader.fieldnames} — those fields will be blank."
             )
         for r in reader:
@@ -179,7 +189,7 @@ def load_nse(path: str) -> list[dict]:
                     ).strip(),
                     "isin": (r.get(hmap["isin"], "") if hmap["isin"] else "").strip(),
                     "norm_name": normalize_name(name),
-                    "source": "NSE",
+                    "source": source_label,
                 }
             )
     return rows
@@ -254,7 +264,12 @@ def parse_date(s: str):
     m = re.match(r"^(.*?)[T ]\d{1,2}:\d{2}", s)
     if m:
         s = m.group(1)
-    for fmt in ("%d-%b-%Y", "%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%d-%m-%Y"):
+    # FIX (2026-08-20): NSE SME/Emerge DATE_OF_LISTING uses 2-digit year
+    # (20-Aug-26), confirmed against real SME_EQUITY_L.csv -- old format
+    # list only had %d-%b-%Y (4-digit), so every SME row silently failed
+    # to parse, dates_close() always False, all 462 real matches got
+    # rejected as date-mismatched near-misses. %d-%b-%y added.
+    for fmt in ("%d-%b-%Y", "%d-%b-%y", "%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%d-%m-%Y"):
         try:
             return datetime.strptime(s, fmt).date()
         except ValueError:
@@ -314,6 +329,7 @@ def match_company(
     nse_rows: list[dict],
     bse_main_rows: list[dict],
     bse_sme_rows: list[dict],
+    nse_sme_rows: list[dict] | None = None,
 ):
     """
     Returns (result_dict_or_None, ambiguous_flag, near_misses_list).
@@ -345,10 +361,16 @@ def match_company(
     category = (db_row.get(COL_ISSUE_CATEGORY) or "").strip().lower()
 
     # Mainboard → try NSE first, then BSE mainboard.
-    # SME → BSE-SME only (SME cos generally aren't NSE Emerge in this list).
+    # FIX (2026-08-20): SME used to search BSE-SME only, on the wrong
+    # assumption "SME cos generally aren't NSE Emerge" -- confirmed wrong
+    # (Optimystix Entertainment IPO, real case: NSE SME/Emerge listing,
+    # symbol OPTIMYSTIX, zero BSE presence at all). SME now also tries
+    # NSE_SME (Emerge) rows, same as BSE_SME, if that file was provided.
     search_order = []
     if category == "sme":
         search_order = [("BSE_SME", bse_sme_rows)]
+        if nse_sme_rows:
+            search_order.append(("NSE_SME", nse_sme_rows))
     else:
         search_order = [("NSE", nse_rows), ("BSE_MAIN", bse_main_rows)]
 
@@ -357,22 +379,24 @@ def match_company(
         hits = []
         near_misses = []  # name matched but rejected (date mismatch etc) — for diagnostics
         for row in rows:
-            if source_tag == "NSE":
+            if source_tag.startswith(
+                "NSE"
+            ):  # FIX (2026-08-20): was `== "NSE"`, now also covers NSE_SME
                 if not any_prefix_match(db_name_candidates, row["norm_name"]):
                     continue
                 if dates_close(db_listing, row["listing_date"]):
                     corroborated_by = "listing_date"
                 elif not row["listing_date"]:
-                    corroborated_by = "name only, NSE listing_date blank (weak — flag for manual review)"
+                    corroborated_by = f"name only, {source_tag} listing_date blank (weak — flag for manual review)"
                 else:
                     near_misses.append(
-                        f"NSE name-matched '{row['name']}' (symbol {row['symbol']}) "
-                        f"but dates disagree: db={db_listing!r} vs nse={row['listing_date']!r}"
+                        f"{source_tag} name-matched '{row['name']}' (symbol {row['symbol']}) "
+                        f"but dates disagree: db={db_listing!r} vs {source_tag.lower()}={row['listing_date']!r}"
                     )
                     continue  # both dates present but don't agree — reject, not a match
                 hits.append(
                     {
-                        "match_source": "NSE",
+                        "match_source": source_tag,
                         "nse_symbol": row["symbol"],
                         "bse_script_code": None,
                         "matched_name": row["name"],
@@ -422,6 +446,15 @@ def main():
     ap.add_argument(
         "--bse-sme-csv", required=True, help="path to BSE-SME list_scrips export"
     )
+    ap.add_argument(
+        "--nse-sme-csv",
+        required=False,
+        default=None,
+        help="path to NSE SME/Emerge master export, same 4-col schema as "
+        "--nse-csv (SYMBOL/NAME OF COMPANY/DATE OF LISTING/ISIN NUMBER). "
+        "Optional -- if omitted, SME companies only search BSE-SME, "
+        "same as before (2026-08-20 fix).",
+    )
     ap.add_argument("--db-path", required=True, help="path to ipo_database.db")
     ap.add_argument("--out", default="proposed_symbol_matches.csv")
     args = ap.parse_args()
@@ -433,11 +466,13 @@ def main():
     nse_rows = load_nse(args.nse_csv)
     bse_main_rows = load_bse(args.bse_main_csv, "BSE_MAIN")
     bse_sme_rows = load_bse(args.bse_sme_csv, "BSE_SME")
+    nse_sme_rows = load_nse(args.nse_sme_csv, "NSE_SME") if args.nse_sme_csv else []
     unmatched = fetch_unmatched_records(conn)
 
     print(
         f"NSE rows: {len(nse_rows)} | BSE mainboard: {len(bse_main_rows)} | "
-        f"BSE SME: {len(bse_sme_rows)} | DB rows needing match: {len(unmatched)}"
+        f"BSE SME: {len(bse_sme_rows)} | NSE SME/Emerge: {len(nse_sme_rows)} | "
+        f"DB rows needing match: {len(unmatched)}"
     )
     if nse_rows:
         print("  NSE sample row (check name/date format look right):", nse_rows[0])
@@ -450,7 +485,7 @@ def main():
     near_miss_log = []
     for db_row in unmatched:
         result, is_ambiguous, near_misses = match_company(
-            db_row, nse_rows, bse_main_rows, bse_sme_rows
+            db_row, nse_rows, bse_main_rows, bse_sme_rows, nse_sme_rows
         )
         if near_misses:
             for nm in near_misses:

@@ -1,443 +1,462 @@
 company_name,db_listing_date,db_category,match_source,nse_symbol,bse_script_code,matched_name,corroborated_by
-Groww (Billionbrains Garage Ventures Ltd),2025-11-12,Mainboard,NSE,GROWW,,Billionbrains Garage Ventures Limited,listing_date
-Swiggy Limited,2024-11-13,Mainboard,NSE,SWIGGY,,Swiggy Limited,listing_date
-Hyundai Motor India Ltd,2024-10-22,Mainboard,NSE,HYUNDAI,,Hyundai Motor India Limited,listing_date
-Ather Energy Ltd.,2025-05-06,Mainboard,NSE,ATHERENERG,,Ather Energy Limited,listing_date
-Hexaware Technologies Ltd.,2025-02-19,Mainboard,NSE,HEXT,,Hexaware Technologies Limited,listing_date
-HDB Financial Services Ltd.,2025-07-02,Mainboard,NSE,HDBFS,,HDB Financial Services Limited,listing_date
-Tata Capital Ltd.,2025-10-13,Mainboard,NSE,TATACAP,,Tata Capital Limited,listing_date
-Bajaj Housing Finance Ltd.,2024-09-16,Mainboard,NSE,BAJAJHFL,,Bajaj Housing Finance Limited,listing_date
-Shiprocket Ltd.,,Mainboard,BSE_MAIN,,544871,Shiprocket Limited,name only (weak — flag for manual review)
-Milky Mist Dairy Food Ltd.,,Mainboard,BSE_MAIN,,544868,Milky Mist Dairy Food Limited,name only (weak — flag for manual review)
-Dhoot Transmission Ltd.,2026-08-17,Mainboard,NSE,DHOOTTRANS,,Dhoot Transmission Limited,listing_date
-Molbio Diagnostics Ltd.,2026-08-17,Mainboard,NSE,MOLBIO,,Molbio Diagnostics Limited,listing_date
-Technocraft Ventures Ltd.,2026-08-14,Mainboard,NSE,TECHNOCRAF,,Technocraft Ventures Limited,listing_date
-LEAP India Ltd.,2026-08-14,Mainboard,NSE,LEAPIND,,LEAP India Limited,listing_date
-LAPL Automotive Ltd.,2026-08-13,SME,BSE_SME,,544863,LAPL Automotive Ltd,issuer_name+security_name agree
-Ardee Industries Ltd.,2026-08-12,Mainboard,NSE,ARDEE,,Ardee Industries Limited,listing_date
-Aegeus Technologies Ltd.,,SME,BSE_SME,,544858,Aegeus Technologies Ltd,issuer_name+security_name agree
-G.V.Electricals Ltd.,2026-08-12,SME,BSE_SME,,544859,G V Electricals Ltd,issuer_name+security_name agree
-Aequs Ltd,2025-12-10,Mainboard,NSE,AEQUS,,Aequs Limited,listing_date
-Meesho Ltd,2025-12-10,Mainboard,NSE,MEESHO,,Meesho Limited,listing_date
-Vidya Wires Ltd,2025-12-10,Mainboard,NSE,VIDYAWIRES,,Vidya Wires Limited,listing_date
-Sudeep Pharma Ltd,2025-11-28,Mainboard,NSE,SUDEEPPHRM,,Sudeep Pharma Limited,listing_date
-Physics Wallah Limited,2025-11-18,Mainboard,NSE,PWL,,Physicswallah Limited,listing_date
-Pine Labs Ltd,2025-11-14,Mainboard,NSE,PINELABS,,Pine Labs Limited,listing_date
-Orkla India Ltd,2025-11-06,Mainboard,NSE,ORKLAINDIA,,Orkla India Limited,listing_date
-Midwest Ltd,2025-10-24,Mainboard,NSE,MIDWESTLTD,,Midwest Limited,listing_date
-Glottis Ltd,2025-10-07,Mainboard,NSE,GLOTTIS,,Glottis Limited,listing_date
-Pace Digitek Ltd,2025-10-06,Mainboard,NSE,PACEDIGITK,,Pace Digitek Limited,listing_date
-BMW Ventures Ltd,2025-10-01,Mainboard,NSE,BMWVENTLTD,,BMW Ventures Limited,listing_date
-GK Energy Ltd,2025-09-26,Mainboard,NSE,GKENERGY,,GK Energy Limited,listing_date
-VMS TMT Ltd,2025-09-24,Mainboard,NSE,VMSTMT,,VMS TMT Limited,listing_date
-Urban Company Ltd,2025-09-17,Mainboard,NSE,URBANCO,,Urban Company Limited,listing_date
-Gem Aromatics Ltd,2025-08-26,Mainboard,NSE,GEMAROMA,,Gem Aromatics Limited,listing_date
-Patel Retail Ltd,2025-08-26,Mainboard,NSE,PATELRMART,,Patel Retail Limited,listing_date
-Vikram Solar Ltd,2025-08-26,Mainboard,NSE,VIKRAMSOLR,,Vikram Solar Limited,listing_date
-JSW Cement Ltd,2025-08-14,Mainboard,NSE,JSWCEMENT,,JSW Cement Limited,listing_date
-M & B Engineering Ltd,2025-08-06,Mainboard,NSE,MBEL,,M & B Engineering Limited,listing_date
-Sri Lotus Developers & Realty Ltd,2025-08-06,Mainboard,NSE,LOTUSDEV,,Sri Lotus Developers and Realty Limited,listing_date
-National Securities Depository Ltd (NSDL),2025-08-06,Mainboard,BSE_MAIN,,544467,National Securities Depository Limited,name only (weak — flag for manual review)
-Aditya Infotech Ltd,2025-08-05,Mainboard,NSE,CPPLUS,,Aditya Infotech Limited,listing_date
-Laxmi India Finance Ltd,2025-08-05,Mainboard,NSE,LAXMIINDIA,,Laxmi India Finance Limited,listing_date
-Shanti Gold International Ltd,2025-08-01,Mainboard,NSE,SHANTIGOLD,,Shanti Gold International Limited,listing_date
-Brigade Hotel Ventures Limited,2025-07-31,Mainboard,NSE,BRIGHOTEL,,Brigade Hotel Ventures Limited,listing_date
-GNG Electronics Limited,2025-07-30,Mainboard,NSE,EBGNG,,GNG Electronics Limited,listing_date
-Indiqube Spaces Limited,2025-07-30,Mainboard,NSE,INDIQUBE,,Indiqube Spaces Limited,listing_date
-Anthem Biosciences Limited,2025-07-21,Mainboard,NSE,ANTHEM,,Anthem Biosciences Limited,listing_date
-Travel Food Services Limited,2025-07-14,Mainboard,NSE,TRAVELFOOD,,Travel Food Services Limited,listing_date
-Crizac Limited,2025-07-09,Mainboard,NSE,CRIZAC,,Crizac Limited,listing_date
-Indogulf Cropsciences Limited,2025-07-03,Mainboard,NSE,IGCL,,Indogulf Cropsciences Limited,listing_date
-Sambhv Steel Tubes Limited,2025-07-02,Mainboard,NSE,SAMBHV,,Sambhv Steel Tubes Limited,listing_date
-Globe Civil Projects Limited,2025-07-01,Mainboard,NSE,GLOBECIVIL,,Globe Civil Projects Limited,listing_date
-Kalpataru Limited,2025-07-01,Mainboard,NSE,KALPATARU,,Kalpataru Limited,listing_date
-Ellenbarrie Industrial Gases Limited,2025-07-01,Mainboard,NSE,ELLEN,,Ellenbarrie Industrial Gases Limited,listing_date
-Arisinfra Solutions Limited,2025-06-25,Mainboard,NSE,ARIS,,Arisinfra Solutions Limited,listing_date
-Oswal Pumps Limited,2025-06-20,Mainboard,NSE,OSWALPUMPS,,Oswal Pumps Limited,listing_date
-Scoda Tubes Limited,2025-06-04,Mainboard,NSE,SCODATUBES,,Scoda Tubes Limited,listing_date
-Prostarm Info Systems Limited,2025-06-03,Mainboard,NSE,PROSTARM,,Prostarm Info Systems Limited,listing_date
-Aegis Vopak Terminals Limited,2025-06-02,Mainboard,NSE,AEGISVOPAK,,Aegis Vopak Terminals Limited,listing_date
-Belrise Industries Limited,2025-05-28,Mainboard,NSE,BELRISE,,Belrise Industries Limited,listing_date
-Borana Weaves Limited,2025-05-27,Mainboard,NSE,BORANA,,Borana Weaves Limited,listing_date
-Ajax Engineering Limited,2025-02-17,Mainboard,NSE,AJAXENGG,,Ajax Engineering Limited,listing_date
-Dr Agarwal's Healthcare Limited,2025-02-04,Mainboard,NSE,AGARWALEYE,,Dr. Agarwal's Health Care Limited,listing_date
-Stallion India Fluorochem Limited,2025-01-23,Mainboard,NSE,STALLION,,Stallion India Fluorochemicals Limited,listing_date
-Laxmi Dental Limited,2025-01-20,Mainboard,NSE,LAXMIDENTL,,Laxmi Dental Limited,listing_date
-Quadrant Future Tek Limited,2025-01-14,Mainboard,NSE,QUADFUTURE,,Quadrant Future Tek Limited,listing_date
-Indo Farm Equipment Limited,2025-01-07,Mainboard,NSE,INDOFARM,,Indo Farm Equipment Limited,listing_date
-Unimech Aerospace and Manufacturing Limited,2024-12-31,Mainboard,NSE,UNIMECH,,Unimech Aerospace and Manufacturing Limited,listing_date
-Ventive Hospitality Limited,2024-12-30,Mainboard,NSE,VENTIVE,,Ventive Hospitality Limited,listing_date
-Carraro India Limited,2024-12-30,Mainboard,NSE,CARRARO,,Carraro India Limited,listing_date
-Senores Pharmaceuticals Limited,2024-12-30,Mainboard,NSE,SENORES,,Senores Pharmaceuticals Limited,listing_date
-Transrail Lighting Limited,2024-12-27,Mainboard,NSE,TRANSRAILL,,Transrail Lighting Limited,listing_date
-Dam Capital Advisors Limited,2024-12-27,Mainboard,NSE,DAMCAPITAL,,Dam Capital Advisors Limited,listing_date
-Mamata Machinery Limited,2024-12-27,Mainboard,NSE,MAMATA,,Mamata Machinery Limited,listing_date
-Sanathan Textiles Limited,2024-12-27,Mainboard,NSE,SANATHAN,,Sanathan Textiles Limited,listing_date
-Concord Enviro Systems Limited,2024-12-27,Mainboard,NSE,CEWATER,,Concord Enviro Systems Limited,listing_date
-Inventurus Knowledge Solutions Limited,2024-12-19,Mainboard,NSE,IKS,,Inventurus Knowledge Solutions Limited,listing_date
-Vishal Mega Mart Limited,2024-12-18,Mainboard,NSE,VMM,,Vishal Mega Mart Limited,listing_date
-One Mobikwik Systems Limited,2024-12-18,Mainboard,NSE,MOBIKWIK,,One Mobikwik Systems Limited,listing_date
-Sai Life Sciences Limited,2024-12-18,Mainboard,NSE,SAILIFE,,Sai Life Sciences Limited,listing_date
-Suraksha Diagnostic Limited,2024-12-06,Mainboard,NSE,SURAKSHA,,Suraksha Diagnostic Limited,listing_date
-Enviro Infra Engineers Limited,2024-11-29,Mainboard,NSE,EIEL,,Enviro Infra Engineers Limited,listing_date
-NTPC Green Energy Limited,2024-11-27,Mainboard,NSE,NTPCGREEN,,NTPC Green Energy Limited,listing_date
-Zinka Logistics Solution Limited (BlackBuck),2024-11-22,Mainboard,NSE,BLACKBUCK,,BLACKBUCK LIMITED,listing_date
-Niva Bupa Health Insurance Company Limited,2024-11-14,Mainboard,NSE,NIVABUPA,,Niva Bupa Health Insurance Company Limited,listing_date
-ACME Solar Holdings Limited,2024-11-13,Mainboard,NSE,ACMESOLAR,,Acme Solar Holdings Limited,listing_date
-Sagility India Limited,2024-11-12,Mainboard,NSE,SAGILITY,,SAGILITY LIMITED,listing_date
-Afcons Infrastructure Limited,2024-11-04,Mainboard,NSE,AFCONS,,Afcons Infrastructure Limited,listing_date
-Godavari Biorefineries Limited,2024-10-30,Mainboard,NSE,GODAVARIB,,Godavari Biorefineries Limited,listing_date
-Deepak Builders & Engineers India Limited,2024-10-28,Mainboard,NSE,DBEIL,,Deepak Builders & Engineers India Limited,listing_date
-Waaree Energies Limited,2024-10-28,Mainboard,NSE,WAAREEENER,,Waaree Energies Limited,listing_date
-Garuda Construction and Engineering Limited,2024-10-15,Mainboard,NSE,GARUDA,,Garuda Construction and Engineering Limited,listing_date
-Diffusion Engineers Limited,2024-10-04,Mainboard,NSE,DIFFNKG,,Diffusion Engineers Limited,listing_date
-KRN Heat Exchanger and Refrigeration Limited,2024-10-03,Mainboard,NSE,KRN,,KRN Heat Exchanger and Refrigeration Limited,listing_date
-Manba Finance Limited,2024-09-30,Mainboard,NSE,MANBA,,Manba Finance Limited,listing_date
-Arkade Developers Limited,2024-09-24,Mainboard,NSE,ARKADE,,Arkade Developers Limited,listing_date
-Northern ARC Capital Limited,2024-09-24,Mainboard,NSE,NORTHARC,,Northern Arc Capital Limited,listing_date
-Western Carriers Limited,2024-09-24,Mainboard,NSE,WCIL,,Western Carriers (India) Limited,listing_date
-P N Gadgil Jewellers Limited,2024-09-17,Mainboard,NSE,PNGJL,,P N Gadgil Jewellers Limited,listing_date
-Tolins Tyres Limited,2024-09-16,Mainboard,NSE,TOLINS,,Tolins Tyres Limited,listing_date
-Kross Limited,2024-09-16,Mainboard,NSE,KROSS,,Kross Limited,listing_date
-Shree Tirupati Balajee Agro Trading Company Limited,2024-09-12,Mainboard,NSE,BALAJEE,,Shree Tirupati Balajee Agro Trading Company Limited,listing_date
-Gala Precision Engineering Limited,2024-09-09,Mainboard,NSE,GALAPREC,,Gala Precision Engineering Limited,listing_date
-Baazar Style Retail Limited,2024-09-06,Mainboard,NSE,STYLEBAAZA,,Baazar Style Retail Limited,listing_date
-Ecos (India) Mobility & Hospitality Limited,2024-09-04,Mainboard,NSE,ECOSMOBLTY,,Ecos (India) Mobility & Hospitality Limited,listing_date
-Premier Energies Limited,2024-09-03,Mainboard,NSE,PREMIERENE,,Premier Energies Limited,listing_date
-Orient Technologies Limited,2024-08-28,Mainboard,NSE,ORIENTTECH,,Orient Technologies Limited,listing_date
-Saraswati Saree Depot Limited,2024-08-20,Mainboard,NSE,SSDL,,Saraswati Saree Depot Limited,listing_date
-Brainbees Solutions Limited,2024-08-13,Mainboard,NSE,FIRSTCRY,,Brainbees Solutions Limited,listing_date
-Unicommerce eSolutions Limited,2024-08-13,Mainboard,NSE,UNIECOM,,Unicommerce Esolutions Limited,listing_date
-Ola Electric Mobility Limited,2024-08-09,Mainboard,NSE,OLAELEC,,Ola Electric Mobility Limited,listing_date
-Ceigall India Limited,2024-08-08,Mainboard,NSE,CEIGALL,,Ceigall India Limited,listing_date
-Akums Drugs and Pharmaceuticals Limited,2024-08-06,Mainboard,NSE,AKUMS,,Akums Drugs and Pharmaceuticals Limited,listing_date
-Sanstar Limited,2024-07-26,Mainboard,NSE,SANSTAR,,Sanstar Limited,listing_date
-Emcure Pharmaceuticals Limited,2024-07-10,Mainboard,NSE,EMCURE,,Emcure Pharmaceuticals Limited,listing_date
-Bansal Wire Industries Limited,2024-07-10,Mainboard,NSE,BANSALWIRE,,Bansal Wire Industries Limited,listing_date
-Vraj Iron & Steel Limited,2024-07-03,Mainboard,NSE,VRAJ,,Vraj Iron and Steel Limited,listing_date
-Allied Blenders and Distillers Limited,2024-07-02,Mainboard,NSE,ABDL,,Allied Blenders and Distillers Limited,listing_date
-Stanley Lifestyles Limited,2024-06-28,Mainboard,NSE,STANLEY,,Stanley Lifestyles Limited,listing_date
-Vodafone Idea Ltd,2024-04-25,Mainboard,BSE_MAIN,,532822,VODAFONE IDEA  LIMITED,name only (weak — flag for manual review)
-Bharti Hexacom Ltd,2024-04-12,Mainboard,NSE,BHARTIHEXA,,Bharti Hexacom Limited,listing_date
-SRM Contractors Ltd,2024-04-03,Mainboard,NSE,SRM,,SRM Contractors Limited,listing_date
-Krystal Integrated Services Ltd,2024-03-21,Mainboard,NSE,KRYSTAL,,Krystal Integrated Services Limited,listing_date
-Popular Vehicles & Services Ltd,2024-03-19,Mainboard,NSE,PVSL,,Popular Vehicles and Services Limited,listing_date
-Gopal Snacks Ltd,2024-03-14,Mainboard,NSE,GOPAL,,Gopal Snacks Limited,listing_date
-RK SWAMY Limited,2024-03-12,Mainboard,NSE,RKSWAMY,,R K Swamy Limited,listing_date
-Mukka Proteins Ltd,2024-03-07,Mainboard,NSE,MUKKA,,Mukka Proteins Limited,listing_date
-Exicom Tele-Systems Ltd,2024-03-05,Mainboard,NSE,EXICOM,,Exicom Tele-Systems Limited,listing_date
-Platinum Industries Ltd,2024-03-05,Mainboard,NSE,PLATIND,,Platinum Industries Limited,listing_date
-GPT Healthcare Ltd,2024-02-29,Mainboard,NSE,GPTHEALTH,,GPT Healthcare Limited,listing_date
-Juniper Hotels Ltd,2024-02-28,Mainboard,NSE,JUNIPER,,Juniper Hotels Limited,listing_date
-Vibhor Steel Tubes Limited,2024-02-20,Mainboard,NSE,VSTL,,Vibhor Steel Tubes Limited,listing_date
-Entero Healthcare Solutions Limited,2024-02-16,Mainboard,NSE,ENTERO,,Entero Healthcare Solutions Limited,listing_date
-Jana Small Finance Bank Limited,2024-02-14,Mainboard,NSE,JSFB,,Jana Small Finance Bank Limited,listing_date
-Capital Small Finance Bank Limited,2024-02-14,Mainboard,NSE,CAPITALSFB,,Capital Small Finance Bank Limited,listing_date
-Rashi Peripherals Limited,2024-02-14,Mainboard,NSE,RPTECH,,Rashi Peripherals Limited,listing_date
-BLS E-Services Limited,2024-02-06,Mainboard,NSE,BLSE,,BLS E-Services Limited,listing_date
-Nova Agritech Limited,2024-01-31,Mainboard,NSE,NOVAAGRI,,Nova Agritech Limited,listing_date
-Epack Durable Limited,2024-01-30,Mainboard,NSE,EPACK,,EPACK Durable Limited,listing_date
-Medi Assist Healthcare Services Limited,2024-01-23,Mainboard,NSE,MEDIASSIST,,Medi Assist Healthcare Services Limited,listing_date
-Jyoti CNC Automation Limited,2024-01-16,Mainboard,NSE,JYOTICNC,,Jyoti CNC Automation Limited,listing_date
-Atharva Poly-Plast Limited,2026-07-07,SME,BSE_SME,,544812,Atharva Poly-Plast Ltd,issuer_name+security_name agree
-Modern Diagnostic & Research Centre Limited,2026-01-07,SME,BSE_SME,,544673,Modern Diagnostic & Research Centre Ltd,issuer_name+security_name agree
-Nanta Tech Limited,2025-12-31,SME,BSE_SME,,544668,Nanta Tech Ltd,issuer_name+security_name agree
-Apollo Techno Industries Limited,2025-12-15,SME,BSE_SME,,544671,Apollo Techno Industries Ltd,issuer_name+security_name agree
-Admach Systems Limited,2025-12-31,SME,BSE_SME,,544669,Admach Systems Ltd,issuer_name+security_name agree
-Dachepalli Publishers Limited,2025-12-30,SME,BSE_SME,,544667,Dachepalli Publishers Ltd,issuer_name+security_name agree
-Global Ocean Logistics India Limited,2025-12-15,SME,BSE_SME,,544665,Global Ocean Logistics India Ltd,issuer_name+security_name agree
-Neptune Logitek Limited,2025-12-15,SME,BSE_SME,,544663,Neptune Logitek Ltd,issuer_name+security_name agree
-Stanbik Agro Limited,2025-12-15,SME,BSE_SME,,544659,Stanbik Agro Ltd,issuer_name+security_name agree
-HRS Aluglaze Limited,2025-12-15,SME,BSE_SME,,544656,HRS Aluglaze Ltd,issuer_name+security_name agree
-Pajson Agro India Limited,2025-12-15,SME,BSE_SME,,544657,Pajson Agro India Ltd,issuer_name+security_name agree
-Shipwaves Online Limited,2025-12-15,SME,BSE_SME,,544646,Shipwaves Online Ltd,issuer_name+security_name agree
-Unisem Agritech Limited,2025-12-15,SME,BSE_SME,,544648,Unisem Agritech Ltd,issuer_name+security_name agree
-Riddhi Display Equipments Limited,2025-12-15,SME,BSE_SME,,544640,Riddhi Display Equipments Ltd,issuer_name+security_name agree
-Prodocs Solutions Limited,2025-12-15,SME,BSE_SME,,544643,Prodocs Solutions Ltd,issuer_name+security_name agree
-KV Toys India Limited,2025-12-15,SME,BSE_SME,,544641,K. V. Toys India Ltd,issuer_name+security_name agree
-Methodhub Software Limited,2025-12-15,SME,BSE_SME,,544637,Methodhub Software Ltd,issuer_name+security_name agree
-Western Overseas Study Abroad Limited,2025-12-15,SME,BSE_SME,,544636,Western Overseas Study Abroad Ltd,issuer_name+security_name agree
-Luxury Time Limited,2025-12-15,SME,BSE_SME,,544635,Luxury Time Ltd,issuer_name+security_name agree
-Helloji Holidays Limited,2025-12-15,SME,BSE_SME,,544630,Helloji Holidays Ltd,issuer_name+security_name agree
-Ravelcare Limited,2025-12-15,SME,BSE_SME,,544629,Ravelcare Ltd,issuer_name+security_name agree
-Astron Multigrain Limited,2025-12-15,SME,BSE_SME,,544628,Astron Multigrain Ltd,issuer_name+security_name agree
-Purple Wave Infocom Limited,2025-12-05,SME,BSE_SME,,544627,Purple Wave Infocom Ltd,issuer_name+security_name agree
-Logiciel Solutions Limited,2025-12-05,SME,BSE_SME,,544625,Logiciel Solutions Ltd,issuer_name+security_name agree
-Exato Technologies Limited,2025-12-05,SME,BSE_SME,,544626,Exato Technologies Ltd,issuer_name+security_name agree
-K K Silk Mills Limited,2025-12-03,SME,BSE_SME,,544624,K K Silk Mills Ltd,issuer_name+security_name agree
-Mother Nutri Foods Limited,2025-12-03,SME,BSE_SME,,544623,Mother Nutri Foods Ltd,issuer_name+security_name agree
-SSMD Agrotech India Limited,2025-12-02,SME,BSE_SME,,544621,SSMD Agrotech India Ltd,issuer_name+security_name agree
-Gallard Steel Limited,2025-11-26,SME,BSE_SME,,544616,Gallard Steel Ltd,issuer_name+security_name agree
-Mahamaya Lifesciences Limited,2025-11-15,SME,BSE_SME,,544611,Mahamaya Lifesciences Ltd,issuer_name+security_name agree
-Workmates Core2Cloud Solution Limited,2025-11-15,SME,BSE_SME,,544610,Workmates Core2Cloud Solution Ltd,issuer_name+security_name agree
-Shining Tools Limited,2025-11-15,SME,BSE_SME,,544607,Shining Tools Ltd,issuer_name+security_name agree
-Safecure Services Limited,2025-11-06,SME,BSE_SME,,544596,Safecure Services Ltd,issuer_name+security_name agree
-Game Changers Texfab Limited,2025-11-04,SME,BSE_SME,,544594,Game Changers Texfab Ltd,issuer_name+security_name agree
-Shlokka Dyes Limited,2025-10-15,SME,BSE_SME,,544582,Shlokka Dyes Ltd,issuer_name+security_name agree
-SK Minerals & Additives Limited,2025-10-15,SME,BSE_SME,,544584,SK Minerals & Additives Ltd,issuer_name+security_name agree
-Sihora Industries Limited,2025-10-15,SME,BSE_SME,,544585,Sihora Industries Ltd,issuer_name+security_name agree
-Mittal Sections Limited,2025-10-15,SME,BSE_SME,,544575,Mittal Sections Ltd,issuer_name+security_name agree
-NSB BPO Solutions Limited,2025-10-15,SME,BSE_SME,,544571,NSB BPO Solutions Ltd,issuer_name+security_name agree
-DSM Fresh Foods Limited,2025-10-15,SME,BSE_SME,,544568,DSM Fresh Foods Ltd,issuer_name+security_name agree
-Valplast Technologies Limited,2025-10-15,SME,BSE_SME,,544565,Valplast Technologies Ltd,issuer_name+security_name agree
-Chiraharit Limited,2025-10-15,SME,BSE_SME,,544561,Chiraharit Ltd,issuer_name+security_name agree
-Sunsky Logistics Limited,2025-10-15,SME,BSE_SME,,544566,Sunsky Logistics Ltd,issuer_name+security_name agree
-Infinity Infoway Limited,2025-10-15,SME,BSE_SME,,544567,Infinity Infoway Ltd,issuer_name+security_name agree
-Om Metallogic Limited,2025-10-07,SME,BSE_SME,,544559,Om Metallogic Ltd,issuer_name+security_name agree
-Sodhani Capital Limited,2025-10-07,SME,BSE_SME,,544560,Sodhani Capital Ltd,issuer_name+security_name agree
-Dhillon Freight Carrier Limited,2025-10-15,SME,BSE_SME,,544556,Dhillon Freight Carrier Ltd,issuer_name+security_name agree
-Ameenji Rubber Limited,2025-10-06,SME,BSE_SME,,544555,Ameenji Rubber Ltd,issuer_name+security_name agree
-Bhavik Enterprises Limited,2025-10-06,SME,BSE_SME,,544551,Bhavik Enterprises Ltd,issuer_name+security_name agree
-Rukmani Devi Garg Agro Impex Limited,2025-10-15,SME,BSE_SME,,544552,Rukmani Devi Garg Agro Impex Ltd,issuer_name+security_name agree
-MPK Steels (I) Limited,2025-10-15,SME,BSE_SME,,544553,M P K Steels (I) Ltd,issuer_name+security_name agree
-KVS Castings Limited,2025-10-06,SME,BSE_SME,,544554,KVS Castings Ltd,issuer_name+security_name agree
-Chatterbox Technologies Limited,2025-10-15,SME,BSE_SME,,544546,Chatterbox Technologies Ltd,issuer_name+security_name agree
-Earkart Limited,2025-10-03,SME,BSE_SME,,544549,Earkart Ltd,issuer_name+security_name agree
-Telge Projects Limited,2025-10-03,SME,BSE_SME,,544544,Telge Projects Ltd,issuer_name+security_name agree
-Praruh Technologies Limited,2025-10-01,SME,BSE_SME,,544538,Praruh Technologies Ltd,issuer_name+security_name agree
-Justo Realfintech Limited,2025-10-01,SME,BSE_SME,,544542,Justo Realfintech Ltd,issuer_name+security_name agree
-Systematic Industries Limited,2025-10-01,SME,BSE_SME,,544541,Systematic Industries Ltd,issuer_name+security_name agree
-True Colors Limited,2025-09-30,SME,BSE_SME,,544531,True Colors Ltd,issuer_name+security_name agree
-Aptus Pharma Limited,2025-09-30,SME,BSE_SME,,544529,Aptus Pharma Ltd,issuer_name+security_name agree
-Bharatrohan Airborne Innovations Limited,2025-09-15,SME,BSE_SME,,544535,Bharatrohan Airborne Innovations Ltd,issuer_name+security_name agree
-Solvex Edibles Limited,2025-10-01,SME,BSE_SME,,544539,Solvex Edibles Ltd,issuer_name+security_name agree
-JD Cables Limited,2025-09-25,SME,BSE_SME,,544524,JD Cables Ltd,issuer_name+security_name agree
-Sampat Aluminium Limited,2025-09-24,SME,BSE_SME,,544520,Sampat Aluminium Ltd,issuer_name+security_name agree
-LT Elevator Limited,2025-09-15,SME,BSE_SME,,544518,L. T. Elevator Ltd,issuer_name+security_name agree
-Airfloa Rail Technology Limited,2025-09-15,SME,BSE_SME,,544516,Airfloa Rail Technology Ltd,issuer_name+security_name agree
-Jay Ambe Supermarkets Limited,2025-09-15,SME,BSE_SME,,544514,Jay Ambe Supermarkets Ltd,issuer_name+security_name agree
-Karbonsteel Engineering Limited,2025-09-15,SME,BSE_SME,,544511,Karbonsteel Engineering Ltd,issuer_name+security_name agree
-Krupalu Metals Limited,2025-09-15,SME,BSE_SME,,544509,Krupalu Metals Ltd,issuer_name+security_name agree
-Nilachal Carbo Metalicks Limited,2025-09-15,SME,BSE_SME,,544510,Nilachal Carbo Metalicks Ltd,issuer_name+security_name agree
-Vashishtha Luxury Fashion Limited,2025-09-15,SME,BSE_SME,,544508,Vashishtha Luxury Fashion Ltd,issuer_name+security_name agree
-Austere Systems Limited,2025-09-15,SME,BSE_SME,,544505,Austere Systems Ltd,issuer_name+security_name agree
-Sharvaya Metals Limited,2025-09-15,SME,BSE_SME,,544506,Sharvaya Metals Ltd,issuer_name+security_name agree
-Goel Construction Company Limited,2025-09-15,SME,BSE_SME,,544504,Goel Construction Company Ltd,issuer_name+security_name agree
-Rachit Prints Limited,2025-09-15,SME,BSE_SME,,544503,Rachit Prints Ltd,issuer_name+security_name agree
-Sugs Lloyd Limited,2025-09-05,SME,BSE_SME,,544501,Sugs Lloyd Ltd,issuer_name+security_name agree
-Abril Paper Tech Limited,2025-09-05,SME,BSE_SME,,544500,Abril Paper Tech Ltd,issuer_name+security_name agree
-Oval Projects Engineering Limited,2025-09-15,SME,BSE_SME,,544498,Oval Projects Engineering Ltd,issuer_name+security_name agree
-NIS Management Limited,2025-09-02,SME,BSE_SME,,544495,NIS Management Ltd,issuer_name+security_name agree
-Globtier Infotech limited,2025-09-02,SME,BSE_SME,,544494,Globtier Infotech Ltd,issuer_name+security_name agree
-Icodex Publishing Solutions Limited,2025-08-15,SME,BSE_SME,,544483,Icodex Publishing Solutions Ltd,issuer_name+security_name agree
-Star Imaging and Path Lab Limited,2025-08-15,SME,BSE_SME,,544482,Star Imaging And Path Lab Ltd,issuer_name+security_name agree
-BLT Logistics Limited,2025-08-15,SME,BSE_SME,,544474,BLT Logistics Ltd,issuer_name+security_name agree
-Essex Marine Limited,2025-08-15,SME,BSE_SME,,544475,Essex Marine Ltd,issuer_name+security_name agree
-Takyon Networks Limited,2025-08-06,SME,BSE_SME,,544471,Takyon Networks Ltd,issuer_name+security_name agree
-Mehul Colours Limited,2025-08-06,SME,BSE_SME,,544472,Mehul Colours Ltd,issuer_name+security_name agree
-Repono Limited,2025-08-04,SME,BSE_SME,,544463,Repono Ltd,issuer_name+security_name agree
-Umiya Mobile Limited,2025-08-04,SME,BSE_SME,,544464,Umiya Mobile Ltd,issuer_name+security_name agree
-Shree Refrigerations Limited,2025-08-01,SME,BSE_SME,,544458,Shree Refrigerations Ltd,issuer_name+security_name agree
-Patel Chem Specialities Limited,2025-08-15,SME,BSE_SME,,544460,Patel Chem Specialities Ltd,issuer_name+security_name agree
-Monarch Surveyors and Engineering Consultants Limited,2025-07-29,SME,BSE_SME,,544453,Monarch Surveyors and Engineering Consultants Ltd,issuer_name+security_name agree
-Swastika Castal Limited,2025-07-28,SME,BSE_SME,,544452,Swastika Castal Ltd,issuer_name+security_name agree
-Monika Alcobev Limited,2025-07-23,SME,BSE_SME,,544451,Monika Alcobev Ltd,issuer_name+security_name agree
-Asston Pharmaceuticals Limited,2025-07-15,SME,BSE_SME,,544445,Asston Pharmaceuticals Ltd,issuer_name+security_name agree
-GLEN Industries Limited,2025-07-15,SME,BSE_SME,,544444,Glen Industries Ltd,issuer_name+security_name agree
-Chemkart India Limited,2025-07-15,SME,BSE_SME,,544442,Chemkart India Ltd,issuer_name+security_name agree
-Meta Infotech Limited,2025-07-15,SME,BSE_SME,,544441,Meta Infotech Ltd,issuer_name+security_name agree
-Cryogenic OGS Limited,2025-07-15,SME,BSE_SME,,544440,Cryogenic Ogs Ltd,issuer_name+security_name agree
-Marc Loire Fashions Limited,2025-07-07,SME,BSE_SME,,544437,Marc Loire Fashions Ltd,issuer_name+security_name agree
-Vandan Foods Limited,2025-07-07,SME,BSE_SME,,544436,Vandan Foods Ltd,issuer_name+security_name agree
-Adcounty Media India Limited,2025-07-04,SME,BSE_SME,,544435,Adcounty Media India Ltd,issuer_name+security_name agree
-Neetu Yoshi Limited,2025-07-04,SME,BSE_SME,,544434,Neetu Yoshi Ltd,issuer_name+security_name agree
-Valencia India Limited,2025-07-03,SME,BSE_SME,,544433,Valencia India Ltd,issuer_name+security_name agree
-Ace Alpha Tech Limited,2025-07-03,SME,BSE_SME,,544431,Ace Alpha Tech Ltd,issuer_name+security_name agree
-Supertech EV Limited,2025-07-02,SME,BSE_SME,,544428,Supertech Ev Ltd,issuer_name+security_name agree
-Icon Facilitators Limited,2025-07-01,SME,BSE_SME,,544426,Icon Facilitators Ltd,issuer_name+security_name agree
-AJC Jewel Manufacturers Limited,2025-07-15,SME,BSE_SME,,544425,AJC Jewel Manufacturers Ltd,issuer_name+security_name agree
-Abram Food Limited,2025-07-01,SME,BSE_SME,,544422,Abram Food Ltd,issuer_name+security_name agree
-Aten Papers and Foam Limited,2025-06-15,SME,BSE_SME,,544417,Aten Papers & Foam Ltd,issuer_name+security_name agree
-3B FILMS LIMITED,2025-06-06,SME,BSE_SME,,544412,3B Films Ltd,issuer_name+security_name agree
-Astonea Labs Limited,2025-06-03,SME,BSE_SME,,544409,Astonea Labs Ltd,issuer_name+security_name agree
-Srigee DLM Limited,2025-05-15,SME,BSE_SME,,544399,Srigee Dlm Ltd,issuer_name+security_name agree
-Manoj Jewellers Limited,2025-05-15,SME,BSE_SME,,544400,Manoj Jewellers Ltd,issuer_name+security_name agree
-Kenrik Industries Limited,2025-05-15,SME,BSE_SME,,544398,Kenrik Industries Ltd,issuer_name+security_name agree
-Infonative Solutions Limited,2025-04-15,SME,BSE_SME,,544393,Infonative Solutions Ltd,issuer_name+security_name agree
-Spinaroo Commercial Limited,2025-04-15,SME,BSE_SME,,544392,Spinaroo Commercial Ltd,issuer_name+security_name agree
-Retaggio Industries Limited,2025-04-07,SME,BSE_SME,,544391,Retaggio Industries Ltd,issuer_name+security_name agree
-Identixweb Limited,2025-04-03,SME,BSE_SME,,544388,Identixweb Ltd,issuer_name+security_name agree
-Desco Infratech Limited,2025-04-01,SME,BSE_SME,,544387,Desco Infratech Ltd,issuer_name+security_name agree
-Paradeep Parivahan Limited,2025-03-24,SME,BSE_SME,,544383,Paradeep Parivahan Ltd,issuer_name+security_name agree
-Super Iron Foundry Limited,2025-03-15,SME,BSE_SME,,544381,Super Iron Foundry Ltd,issuer_name+security_name agree
-PDP Shipping & Projects Limited,2025-03-15,SME,BSE_SME,,544378,PDP Shipping & Projects Ltd,issuer_name+security_name agree
-NAPS Global India Limited,2025-03-15,SME,BSE_SME,,544373,NAPS Global India Ltd,issuer_name+security_name agree
-Shreenath Paper Products Limited,2025-03-05,SME,BSE_SME,,544372,Shreenath Paper Products Ltd,issuer_name+security_name agree
-Nukleus Office Solutions Limited,2025-03-15,SME,BSE_SME,,544370,Nukleus Office Solutions Ltd,issuer_name+security_name agree
-Beezaasan Explotech Limited,2025-03-03,SME,BSE_SME,,544369,Beezaasan Explotech Ltd,issuer_name+security_name agree
-Swasth Foodtech India Limited,2025-02-28,SME,BSE_SME,,544368,Swasth Foodtech India Ltd,issuer_name+security_name agree
-L.K.Mehta Polymers Limited,2025-02-15,SME,BSE_SME,,544366,L.K.Mehta Polymers Ltd,issuer_name+security_name agree
-Shanmuga Hospital Limited,2025-02-15,SME,BSE_SME,,544365,Shanmuga Hospital Ltd,issuer_name+security_name agree
-Solarium Green Energy Limited,2025-02-15,SME,BSE_SME,,544354,Solarium Green Energy Ltd,issuer_name+security_name agree
-Amwill Health Care Limited,2025-02-15,SME,BSE_SME,,544353,Amwill Health Care Ltd,issuer_name+security_name agree
-Malpani Pipes & Fittings Limited,2025-02-04,SME,BSE_SME,,544351,Malpani Pipes And Fittings Ltd,issuer_name+security_name agree
-H.M. Electro Mech Limited,2025-01-31,SME,BSE_SME,,544349,H.M. Electro Mech Ltd,issuer_name+security_name agree
-GB Logistics Commerce Limited,2025-01-31,SME,BSE_SME,,544348,GB Logistics Commerce Ltd,issuer_name+security_name agree
-CLN Energy Limited,2025-01-30,SME,BSE_SME,,544347,CLN Energy Ltd,issuer_name+security_name agree
-Capital Numbers Infotech Limited,2025-01-15,SME,BSE_SME,,544343,Capitalnumbers Infotech Ltd,issuer_name+security_name agree
-Rikhav Securities Limited,2025-01-15,SME,BSE_SME,,544340,Rikhav Securities Ltd,issuer_name+security_name agree
-B.R.Goyal Infrastructure Limited,2025-01-15,SME,BSE_SME,,544335,B.R.Goyal Infrastructure Ltd,issuer_name+security_name agree
-Avax Apparels And Ornaments Limited,2025-01-15,SME,BSE_SME,,544337,Avax Apparels and Ornaments Ltd,issuer_name+security_name agree
-Indobell Insulation Limited,2025-01-15,SME,BSE_SME,,544334,Indobell Insulations Ltd,issuer_name+security_name agree
-Parmeshwar Metal Limited,2025-01-15,SME,BSE_SME,,544330,Parmeshwar Metal Ltd,issuer_name+security_name agree
-Davin Sons Retail Limited,2025-01-15,SME,BSE_SME,,544331,Davin Sons Retail Ltd,issuer_name+security_name agree
-Leo Dryfruits & Spices Trading Limited,2025-01-15,SME,BSE_SME,,544329,Leo Dryfruits & Spices Trading Ltd,issuer_name+security_name agree
-Technichem Organics Limited,2025-01-15,SME,BSE_SME,,544327,Technichem Organics Ltd,issuer_name+security_name agree
-Citichem India Limited,2025-01-03,SME,BSE_SME,,544324,Citichem India Ltd,issuer_name+security_name agree
-NACDAC Infrastructure Limited,2024-12-24,SME,BSE_SME,,544313,NACDAC Infrastructure Ltd,issuer_name+security_name agree
-Hamps Bio Limited,2024-12-15,SME,BSE_SME,,544312,Hamps Bio Ltd,issuer_name+security_name agree
-Yash Highvoltage Limited,2024-12-15,SME,BSE_SME,,544310,Yash Highvoltage Ltd,issuer_name+security_name agree
-Jungle Camps India Limited,2024-12-15,SME,BSE_SME,,544304,Jungle Camps India Ltd,issuer_name+security_name agree
-Toss the Coin Limited,2024-12-15,SME,BSE_SME,,544303,Toss The Coin Ltd,issuer_name+security_name agree
-Nisus Finance Services Co Limited,2024-12-15,SME,BSE_SME,,544296,Nisus Finance Services Co Ltd,issuer_name+security_name agree
-Rajesh Power Services Limited,2024-12-02,SME,BSE_SME,,544291,Rajesh Power Services Ltd,issuer_name+security_name agree
-Mangal Compusolution Limited,2024-11-15,SME,BSE_SME,,544287,Mangal Compusolution Ltd,issuer_name+security_name agree
-Shiv Texchem Limited,2024-10-15,SME,BSE_SME,,544272,Shiv Texchem Ltd,issuer_name+security_name agree
-Khyati Global Ventures Limited,2024-10-15,SME,BSE_SME,,544270,Khyati Global Ventures Ltd,issuer_name+security_name agree
-NeoPolitan Pizza and Foods Limited,2024-10-15,SME,BSE_SME,,544269,Neopolitan Pizza And Foods Ltd,issuer_name+security_name agree
-Subam Papers Limited,2024-10-15,SME,BSE_SME,,544267,Subam Papers Ltd,issuer_name+security_name agree
-Nexxus Petro Industries Limited,2024-10-15,SME,BSE_SME,,544265,Nexxus Petro Industries Ltd,issuer_name+security_name agree
-Popular Foundations Limited,2024-09-24,SME,BSE_SME,,544259,Popular Foundations Ltd,issuer_name+security_name agree
-Sodhani Academy of Fintech Enablers Limited,2024-09-15,SME,BSE_SME,,544257,Sodhani Academy of Fintech Enablers Ltd,issuer_name+security_name agree
-Share Samadhan Limited,2024-09-15,SME,BSE_SME,,544251,Share Samadhan Ltd,issuer_name+security_name agree
-Naturewings Holidays Limited,2024-09-15,SME,BSE_SME,,544245,Naturewings Holidays Ltd,issuer_name+security_name agree
-Travels & Rentals Limited,2024-09-05,SME,BSE_SME,,544242,Travels & Rentals Ltd,issuer_name+security_name agree
-Rapid Multimodal Logistics Limited,2024-08-15,SME,BSE_SME,,544237,Rapid Multimodal logistics Ltd,issuer_name+security_name agree
-Resourceful Automobile Limited,2024-08-29,SME,BSE_SME,,544236,Resourceful Automobile Ltd,issuer_name+security_name agree
-Broach Lifecare Hospital,2024-08-15,SME,BSE_SME,,544231,Broach Lifecare Hospital Ltd,issuer_name+security_name agree
-Afcom Holdings Limited,2024-08-15,SME,BSE_SME,,544224,Afcom Holdings Ltd,issuer_name+security_name agree
-Kizi Apparels Limited,2024-08-06,SME,BSE_SME,,544221,Kizi Apparels Ltd,issuer_name+security_name agree
-Clinitech Laboratory Limited,2024-08-01,SME,BSE_SME,,544220,Clinitech Laboratory Ltd,issuer_name+security_name agree
-VVIP Infratech Limited,2024-07-30,SME,BSE_SME,,544219,VVIP Infratech Ltd,issuer_name+security_name agree
-Aelea Commodities Limited,2024-07-15,SME,BSE_SME,,544213,Aelea Commodities Ltd,issuer_name+security_name agree
-Three M Paper Boards Limited,2024-07-15,SME,BSE_SME,,544214,Three M Paper Boards Ltd,issuer_name+security_name agree
-Dindigul Farm Product Limited,2024-06-27,SME,BSE_SME,,544201,Dindigul Farm Product Ltd,issuer_name+security_name agree
-GEM Enviro Management Limited,2024-06-26,SME,BSE_SME,,544199,GEM Enviro Management Ltd,issuer_name+security_name agree
-United Cotfab Limited,2024-06-24,SME,BSE_SME,,544195,United Cotfab Ltd,issuer_name+security_name agree
-Sattrix Information Security Limited,2024-06-15,SME,BSE_SME,,544189,Sattrix Information Security Ltd,issuer_name+security_name agree
-3C IT Solutions & Telecoms (India) Limited,2024-06-15,SME,BSE_SME,,544190,3C IT Solutions and Telecoms (India) Ltd,issuer_name+security_name agree
-Magenta Lifecare Limited,2024-06-15,SME,BSE_SME,,544188,Magenta Lifecare Ltd,issuer_name+security_name agree
-Associated Coaters Limited,2024-06-06,SME,BSE_SME,,544183,Associated Coaters Ltd,issuer_name+security_name agree
-Piotex Industries Limited,2024-05-15,SME,BSE_SME,,544178,Piotex Industries Ltd,issuer_name+security_name agree
-Aztec Fluids & Machinery Limited,2024-05-15,SME,BSE_SME,,544177,Aztec Fluids & Machinery Ltd,issuer_name+security_name agree
-TGIF Agribusiness Limited,2024-05-15,SME,BSE_SME,,544175,TGIF Agribusiness Ltd,issuer_name+security_name agree
-Finelistings Technologies Limited,2024-05-15,SME,BSE_SME,,544173,Finelistings Technologies Ltd,issuer_name+security_name agree
-Amkay Products Limited,2024-05-15,SME,BSE_SME,,544169,Amkay Products Ltd,issuer_name+security_name agree
-Storage Technologies and Automation Limited,2024-05-15,SME,BSE_SME,,544171,Storage Technologies and Automation Ltd,issuer_name+security_name agree
-Shivam Chemicals Limited,2024-04-30,SME,BSE_SME,,544165,Shivam Chemicals Ltd,issuer_name+security_name agree
-Emmforce Autotech Limited,2024-04-30,SME,BSE_SME,,544166,Emmforce Autotech Ltd,issuer_name+security_name agree
-Varyaa Creations Limited,2024-04-30,SME,BSE_SME,,544168,Varyaa Creations Ltd,issuer_name+security_name agree
-Faalcon Concepts Limited,2024-04-26,SME,BSE_SME,,544164,Faalcon Concepts Ltd,issuer_name+security_name agree
-Greenhitech Ventures Limited,2024-04-15,SME,BSE_SME,,544163,Greenhitech Ventures Ltd,issuer_name+security_name agree
-Jay Kailash Namkeen Limited,2024-04-15,SME,BSE_SME,,544160,Jay Kailash Namkeen Ltd,issuer_name+security_name agree
-GConnect Logitech and Supply Chain Limited,2024-04-03,SME,BSE_SME,,544156,Gconnect Logitech and Supply Chain Ltd,issuer_name+security_name agree
-Vruddhi Engineering Works Limited,2024-04-15,SME,BSE_SME,,544157,Vruddhi Engineering Works Ltd,issuer_name+security_name agree
-Chatha Foods Limited,2024-03-27,SME,BSE_SME,,544151,Chatha Foods Ltd,issuer_name+security_name agree
-KP Green Engineering Limited,2024-03-15,SME,BSE_SME,,544150,KP Green Engineering Ltd,issuer_name+security_name agree
-Royal Sense Limited,2024-03-15,SME,BSE_SME,,544143,Royal Sense Ltd,issuer_name+security_name agree
-Pune E-Stock Broking Limited,2024-03-15,SME,BSE_SME,,544141,Pune E - Stock Broking Ltd,issuer_name+security_name agree
-Koura Fine Diamond Jewelry Limited,2024-03-15,SME,BSE_SME,,544139,Koura Fine Diamond Jewelry Ltd,issuer_name+security_name agree
-Rudra Gas Enterprise Limited,2024-02-15,SME,BSE_SME,,544121,Rudra Gas Enterprise Ltd,issuer_name+security_name agree
-Gabriel Pet Straps Limited,2024-02-07,SME,BSE_SME,,544108,Gabriel Pet Straps Ltd,issuer_name+security_name agree
-Harshdeep Hortico Limited,2024-02-05,SME,BSE_SME,,544105,Harshdeep Hortico Ltd,issuer_name+security_name agree
-Mayank Cattle Food Limited,2024-02-05,SME,BSE_SME,,544106,Mayank Cattle Food Ltd,issuer_name+security_name agree
-Brisk Technovision Limited,2024-01-31,SME,BSE_SME,,544101,Brisk Technovision Ltd,issuer_name+security_name agree
-Euphoria Infotech India Limited,2024-01-15,SME,BSE_SME,,544094,Euphoria Infotech (India) Ltd,issuer_name+security_name agree
-Qualitek Labs Limited,2024-01-29,SME,BSE_SME,,544091,Qualitek Labs Ltd,issuer_name+security_name agree
-Shree Marutinandan Tubes Limited,2024-01-15,SME,BSE_SME,,544083,Shree Marutinandan Tubes Ltd,issuer_name+security_name agree
-New Swan Multitech Limited,2024-01-15,SME,BSE_SME,,544082,New Swan Multitech Ltd,issuer_name+security_name agree
-Shri Balaji Valve Components Limited,2024-01-15,SME,BSE_SME,,544074,Shri Balaji Valve Components Ltd,issuer_name+security_name agree
-Manoj Ceramic Limited,2024-03-19,SME,BSE_SME,,544073,Manoj Ceramic Ltd,issuer_name+security_name agree
-AIK Pipes And Polymers Limited,2024-01-02,SME,BSE_SME,,544072,AIK Pipes and Polymers Ltd,issuer_name+security_name agree
-Shanti Spintex Limited,2023-12-15,SME,BSE_SME,,544059,Shanti Spintex Ltd,issuer_name+security_name agree
-AMIC Forging Limited,2023-12-15,SME,BSE_SME,,544037,Amic Forging Ltd,issuer_name+security_name agree
-Swashthik Plascon Limited,2023-12-15,SME,BSE_SME,,544035,Swashthik Plascon Ltd,issuer_name+security_name agree
-KK Shah Hospitals Limited,2023-11-15,SME,BSE_SME,,544013,KK Shah Hospitals Ltd,issuer_name+security_name agree
-Vrundavan Plantation Limited,2023-11-15,SME,BSE_SME,,544011,Vrundavan Plantation Ltd,issuer_name+security_name agree
-City Crops Agro limited,2023-10-15,SME,BSE_SME,,544000,City Crops Agro Ltd,issuer_name+security_name agree
-Techknowgreen Solutions Limited,2023-09-15,SME,BSE_SME,,543991,Techknowgreen Solutions Ltd,issuer_name+security_name agree
-CFF Fluid Control Limited,2023-06-15,SME,BSE_SME,,543920,CFF Fluid Control Ltd,issuer_name+security_name agree
-Hemant Surgical Industries Limited,2023-06-15,SME,BSE_SME,,543916,Hemant Surgical Industries Ltd,issuer_name+security_name agree
-S.V.J. Enterprises Limited,2023-03-15,SME,BSE_SME,,543799,S. V. J. ENTERPRISES Ltd,issuer_name+security_name agree
-Macfos Limited,2023-03-15,SME,BSE_SME,,543787,Macfos Ltd,issuer_name+security_name agree
-SVS Ventures Limited,2023-01-15,SME,BSE_SME,,543745,SVS Ventures Ltd,issuer_name+security_name agree
-Droneacharya Aerial Innovations Limited,2022-12-15,SME,BSE_SME,,543713,Droneacharya Aerial Innovations Ltd,issuer_name+security_name agree
-Concord Control Systems Limited,2022-10-15,SME,BSE_SME,,543619,Concord Control Systems Ltd,issuer_name+security_name agree
-Silicon Rental Solutions Limited,2022-10-15,SME,BSE_SME,,543615,Silicon Rental Solutions Ltd,issuer_name+security_name agree
-Steelman Telecom Limited,2022-10-15,SME,BSE_SME,,543622,Steelman Telecom Ltd,issuer_name+security_name agree
-Trident Lifeline Limited,2022-10-15,SME,BSE_SME,,543616,Trident Lifeline Ltd,issuer_name+security_name agree
-Shantidoot Infra Services Limited,2022-09-15,SME,BSE_SME,,543598,Shantidoot Infra Services Ltd,issuer_name+security_name agree
-Dipna Pharmachem Limited,2022-09-15,SME,BSE_SME,,543594,Dipna Pharmachem Ltd,issuer_name+security_name agree
-Pearl Green Clubs and Resorts Limited,2022-07-15,SME,BSE_SME,,543540,Pearl Green Clubs and Resorts Ltd,issuer_name+security_name agree
-Global Longlife Hospital and Research Limited,2022-05-04,SME,BSE_SME,,543520,Global Longlife Hospital and Research Ltd,issuer_name+security_name agree
-Shashwat Furnishing Solutions Limited,2022-05-15,SME,BSE_SME,,543519,Shashwat Furnishing Solutions Ltd,issuer_name+security_name agree
-Sunrise Efficient Marketing Limited,2022-04-12,SME,BSE_SME,,543515,Sunrise Efficient Marketing Ltd,issuer_name+security_name agree
-Bhatia Colour Chem Limited,2022-03-15,SME,BSE_SME,,543497,Bhatia Colour Chem Ltd,issuer_name+security_name agree
-Safa Systems & Technologies Limited,2022-02-09,SME,BSE_SME,,543461,Safa Systems & Technologies Ltd,issuer_name+security_name agree
-Quality RO Industries Limited,2022-02-09,SME,BSE_SME,,543460,Quality RO Industries Ltd,issuer_name+security_name agree
-Suyog Gurbaxani Funicular Ropeways Limited,2021-11-15,SME,BSE_SME,,543391,Suyog Gurbaxani Funicular Ropeways Ltd,issuer_name+security_name agree
-Platinumone Business Services Limited,2021-09-15,SME,BSE_SME,,543352,PlatinumOne Business Services Ltd,issuer_name+security_name agree
-MRP Agro Limited,2021-02-15,SME,BSE_SME,,543262,MRP Agro Ltd,issuer_name+security_name agree
-G M Polyplast Limited,2020-10-15,SME,BSE_SME,,543239,G M Polyplast Ltd,issuer_name+security_name agree
-Chandra Bhagat Pharma Ltd,2020-02-15,SME,BSE_SME,,542934,Chandra Bhagat Pharma Ltd,issuer_name+security_name agree
-Shree Ram Twistex Limited,2026-03-02,Mainboard,NSE,SRTL,,Shree Ram Twistex Limited,listing_date
-Fractal Analytics Limited,2026-02-16,Mainboard,NSE,FRACTAL,,Fractal Analytics Limited,listing_date
-Bharat Coking Coal Limited,2026-01-19,Mainboard,NSE,BHARATCOAL,,Bharat Coking Coal Limited,listing_date
-Gujarat Kidney And Super Speciality Limited,2025-12-30,Mainboard,NSE,GKSL,,Gujarat Kidney And Super Speciality Limited,listing_date
-KSH International Limited,2025-12-23,Mainboard,NSE,KSHINTL,,KSH International Limited,listing_date
-ICICI Prudential Asset Management Company Limited,2025-12-19,Mainboard,NSE,ICICIAMC,,ICICI Prudential Asset Management Company Limited,listing_date
-Park Medi World Limited,2025-12-17,Mainboard,NSE,PARKHOSPS,,Park Medi World Limited,listing_date
-Nephrocare Health Services Limited,2025-12-17,Mainboard,NSE,NEPHROPLUS,,Nephrocare Health Services Limited,listing_date
-Corona Remedies Limited,2025-12-15,Mainboard,NSE,CORONA,,CORONA Remedies Limited,listing_date
-Wakefit Innovations Limited,2025-12-15,Mainboard,NSE,WAKEFIT,,Wakefit Innovations Limited,listing_date
-Excelsoft Technologies Limited,2025-11-26,Mainboard,NSE,EXCELSOFT,,Excelsoft Technologies Limited,listing_date
-Capillary Technologies India Limited,2025-11-21,Mainboard,NSE,CAPILLARY,,Capillary Technologies India Limited,listing_date
-Fujiyama Power Systems Limited,2025-11-20,Mainboard,NSE,UTLSOLAR,,Fujiyama Power Systems Limited,listing_date
-Tenneco Clean Air India Limited,2025-11-19,Mainboard,NSE,TENNIND,,Tenneco Clean Air India Limited,listing_date
-Emmvee Photovoltaic Power Limited,2025-11-18,Mainboard,NSE,EMMVEE,,Emmvee Photovoltaic Power Limited,listing_date
-Lenskart Solutions Limited,2025-11-10,Mainboard,NSE,LENSKART,,Lenskart Solutions Limited,listing_date
-Studds Accessories Limited,2025-11-07,Mainboard,NSE,STUDDS,,Studds Accessories Limited,listing_date
-Canara HSBC Life Insurance Company Limited,2025-10-17,Mainboard,NSE,CANHLIFE,,Canara HSBC Life Insurance Company Limited,listing_date
-Rubicon Research Limited,2025-10-16,Mainboard,NSE,RUBICON,,Rubicon Research Limited,listing_date
-Canara Robeco Asset Management Company Limited,2025-10-16,Mainboard,NSE,CRAMC,,Canara Robeco Asset Management Company Limited,listing_date
-LG Electronics India Limited,2025-10-14,Mainboard,NSE,LGEINDIA,,LG Electronics India Limited,listing_date
-WeWork India Management Limited,2025-10-10,Mainboard,NSE,WEWORK,,WeWork India Management Limited,listing_date
-Om Freight Forwarders Limited,2025-10-08,Mainboard,NSE,OMFREIGHT,,Om Freight Forwarders Limited,listing_date
-Advance Agrolife Limited,2025-10-08,Mainboard,NSE,ADVANCE,,Advance Agrolife Limited,listing_date
-Fabtech Technologies Limited,2025-10-07,Mainboard,NSE,FABTECH,,Fabtech Technologies Limited,listing_date
-Trualt Bioenergy Limited,2025-10-03,Mainboard,NSE,TRUALT,,TruAlt Bioenergy Limited,listing_date
-Epack Prefab Technologies Limited,2025-10-01,Mainboard,NSE,EPACKPEB,,EPack Prefab Technologies Limited,listing_date
-Jain Resource Recycling Limited,2025-10-01,Mainboard,NSE,JAINREC,,Jain Resource Recycling Limited,listing_date
-Jaro Institute Of Technology Management And Research Limited,2025-09-30,Mainboard,NSE,JARO,,Jaro Institute of Technology Management and Research Limited,listing_date
-Solarworld Energy Solutions Limited,2025-09-30,Mainboard,NSE,SOLARWORLD,,Solarworld Energy Solutions Limited,listing_date
-Anand Rathi Share and Stock Brokers Limited,2025-09-30,Mainboard,NSE,ARSSBL,,Anand Rathi Share and Stock Brokers Limited,listing_date
-Seshaasai Technologies Limited,2025-09-30,Mainboard,NSE,STYL,,Seshaasai Technologies Limited,listing_date
-Ganesh Consumer Products Limited,2025-09-29,Mainboard,NSE,GANESHCP,,Ganesh Consumer Products Limited,listing_date
-Atlanta Electricals Limited,2025-09-29,Mainboard,NSE,ATLANTAELE,,Atlanta Electricals Limited,listing_date
-Saatvik Green Energy Limited,2025-09-26,Mainboard,NSE,SAATVIKGL,,Saatvik Green Energy Limited,listing_date
-iValue Infosolutions Limited,2025-09-25,Mainboard,NSE,IVALUE,,Ivalue Infosolutions Limited,listing_date
-Euro Pratik Sales Limited,2025-09-23,Mainboard,NSE,EUROPRATIK,,Euro Pratik Sales Limited,listing_date
-Shringar House of Mangalsutra Limited,2025-09-17,Mainboard,NSE,SHRINGARMS,,Shringar House of Mangalsutra Limited,listing_date
-Dev Accelerator Limited,2025-09-17,Mainboard,NSE,DEVX,,Dev Accelerator Limited,listing_date
-Amanta Healthcare Limited,2025-09-09,Mainboard,NSE,AMANTA,,Amanta Healthcare Limited,listing_date
-Anlon Healthcare Limited,2025-09-03,Mainboard,NSE,AHCL,,Anlon Healthcare Limited,listing_date
-Vikran Engineering Limited,2025-09-03,Mainboard,NSE,VIKRAN,,Vikran Engineering Limited,listing_date
-Mangal Electrical Industries Limited,2025-08-28,Mainboard,NSE,MEIL,,Mangal Electrical Industries Limited,listing_date
-Shreeji Shipping Global Limited,2025-08-26,Mainboard,NSE,SHREEJISPG,,Shreeji Shipping Global Limited,listing_date
-Regaal Resources Limited,2025-08-20,Mainboard,NSE,REGAAL,,Regaal Resources Limited,listing_date
-Bluestone Jewellery And Lifestyle Limited,2025-08-19,Mainboard,NSE,BLUESTONE,,BlueStone Jewellery and Lifestyle Limited,listing_date
-All Time Plastics Limited,2025-08-14,Mainboard,NSE,ALLTIME,,All Time Plastics Limited,listing_date
-Highway Infrastructure Limited,2025-08-12,Mainboard,NSE,HILINFRA,,Highway Infrastructure Limited,listing_date
-Smartworks Coworking Spaces Limited,2025-07-17,Mainboard,NSE,SMARTWORKS,,Smartworks Coworking Spaces Limited,listing_date
-DEE Development Engineers Limited,2024-06-26,Mainboard,NSE,DEEDEV,,DEE Development Engineers Limited,listing_date
-Akme Fintrade India Limited,2024-06-26,Mainboard,NSE,AFIL,,Akme Fintrade (India) Limited,listing_date
-Le Travenues Technology Limited,2024-06-18,Mainboard,NSE,IXIGO,,Le Travenues Technology Limited,listing_date
-Kronox Lab Sciences Limited,2024-06-10,Mainboard,NSE,KRONOX,,Kronox Lab Sciences Limited,listing_date
-Awfis Space Solutions Limited,2024-05-30,Mainboard,NSE,AWFIS,,Awfis Space Solutions Limited,listing_date
-Go Digit General Insurance Limited,2024-05-23,Mainboard,NSE,GODIGIT,,Go Digit General Insurance Limited,listing_date
-Aadhar Housing Finance Limited,2024-05-15,Mainboard,NSE,AADHARHFC,,Aadhar Housing Finance Limited,listing_date
-TBO Tek Limited,2024-05-15,Mainboard,NSE,TBOTEK,,TBO Tek Limited,listing_date
-Indegene Limited,2024-05-13,Mainboard,NSE,INDGN,,Indegene Limited,listing_date
-JNK India Limited,2024-04-30,Mainboard,NSE,JNKINDIA,,JNK India Limited,listing_date
-JG Chemicals Limited,2024-03-13,Mainboard,NSE,JGCHEM,,J.G.Chemicals Limited,listing_date
-Apeejay Surrendra Park Hotels Limited,2024-02-12,Mainboard,NSE,PARKHOTELS,,Apeejay Surrendra Park Hotels Limited,listing_date
+Pramodini Medicare Ltd.,2026-08-19,SME,NSE_SME,PRAMODINI,,Pramodini Medicare Limited,listing_date
+Optimystix Entertainment India Ltd.,2026-08-14,SME,NSE_SME,OPTIMYSTIX,,Optimystix Entertainment India Limited,listing_date
+Anawil Wire & Engineering Ltd.,2026-08-10,SME,NSE_SME,ANAWIL,,Anawil Wire and Engineering Limited,listing_date
+IC Electricals Company Limited,2026-07-10,SME,NSE_SME,ICELCO,,IC Electricals Company Limited,listing_date
+Avience Biomedicals Lmited,2026-06-25,SME,NSE_SME,AVIENCE,,Avience Biomedicals Limited,listing_date
+Amba Auto Sales and Services Limited,2026-05-05,SME,NSE_SME,AMBAAUTO,,Amba Auto Sales and Services Limited,listing_date
+Armour Security (India) Limited,2026-01-22,SME,NSE_SME,ARMOUR,,Armour Security (India) Limited,listing_date
+Dhara Rail Projects Limited,2025-12-31,SME,NSE_SME,DHARARAIL,,Dhara Rail Projects Limited,listing_date
+Sundrex Oil Company Limited,2025-12-30,SME,NSE_SME,SOCL,,Sundrex Oil Company Limited,listing_date
+Shyam Dhani Industries Limited,2025-12-30,SME,NSE_SME,SHYAMDHANI,,Shyam Dhani Industries Limited,listing_date
+EPW India Limited,2025-12-30,SME,NSE_SME,EPWINDIA,,EPW India Limited,listing_date
+Marc Technocrats Limited,2025-12-24,SME,NSE_SME,MARC,,Marc Technocrats Limited,listing_date
+Ashwini Container Movers Limited,2025-12-19,SME,NSE_SME,ASHWINI,,Ashwini Container Movers Limited,listing_date
+Exim Routes Limited,2025-12-19,SME,NSE_SME,EXIMROUTES,,Exim Routes Limited,listing_date
+Flywings Simulator Training Centre Limited,2025-12-15,SME,NSE_SME,FWSTC,,Flywings Simulator Training Centre Limited,listing_date
+Encompass Design (Scale Sauce) India Limited,2025-12-12,SME,NSE_SME,ENCOMPAS,,Encompass Design India Limited,listing_date
+Shri Kanha Stainless Limited,2025-12-10,SME,NSE_SME,SHRIKANHA,,Shri Kanha Stainless Limited,listing_date
+Neochem Bio Solutions Limited,2025-12-09,SME,NSE_SME,NEOCHEM,,Neochem Bio Solutions Limited,listing_date
+Invicta Diagnostic Limited,2025-12-08,SME,NSE_SME,INVICTA,,Invicta Diagnostic Limited,listing_date
+Speb Adhesives Limited,2025-12-08,SME,NSE_SME,SPEB,,Speb Adhesives Limited,listing_date
+Curis Lifesciences Limited,2025-11-14,SME,NSE_SME,CURIS,,Curis Lifesciences Limited,listing_date
+Finbud Financial Services Limited,2025-11-13,SME,NSE_SME,FINBUD,,Finbud Financial Services Limited,listing_date
+Shreeji Global Fmcg Limited,2025-11-12,SME,NSE_SME,SHETHJI,,Shreeji Global FMCG Limited,listing_date
+Jayesh Logistics Limited,2025-11-03,SME,NSE_SME,JAYESH,,Jayesh Logistics Limited,listing_date
+Greenleaf Envirotech Limited,2025-10-09,SME,NSE_SME,GREENLEAF,,Greenleaf Envirotech Limited,listing_date
+Suba Hotels Limited,2025-10-07,SME,NSE_SME,SUBAHOTELS,,Suba Hotels Limited,listing_date
+Sheel Biotech Limited,2025-10-08,SME,NSE_SME,SHEEL,,Sheel Biotech Limited,listing_date
+B.A.G. Convergence Limited,2025-10-08,SME,NSE_SME,BAGDIGITAL,,B.A.G. Convergence Limited,listing_date
+Munish Forge Limited,2025-10-08,SME,NSE_SME,MUNISH,,Munish Forge Limited,listing_date
+Vijaypd Ceutical Limited,2025-10-07,SME,NSE_SME,VIJAYPD,,Vijaypd Ceutical Limited,listing_date
+Manas Polymers And Energies Limited,2025-10-06,SME,NSE_SME,MPEL,,Manas Polymers and Energies Limited,listing_date
+Gurunanak Agriculture India Limited,2025-10-01,SME,NSE_SME,GURUNANAK,,Gurunanak Agriculture India Limited,listing_date
+Ecoline Exim Limited,2025-09-30,SME,NSE_SME,ECOLINE,,Ecoline Exim Limited,listing_date
+Matrix Geo Solutions Limited,2025-09-30,SME,NSE_SME,MGSL,,Matrix Geo Solutions Limited,listing_date
+Prime Cable Industries Limited,2025-09-29,SME,NSE_SME,PRIMECAB,,Prime Cable Industries Limited,listing_date
+Siddhi Cotspin Limited,2025-09-26,SME,NSE_SME,SIDDHICOTS,,Siddhi Cotspin Limited,listing_date
+TechD Cybersecurity Limited,2025-09-22,SME,NSE_SME,TECHD,,TechD Cybersecurity Limited,listing_date
+Galaxy Medicare Limited,2025-09-17,SME,NSE_SME,GML,,Galaxy Medicare Limited,listing_date
+Taurian MPS Limited,2025-09-16,SME,NSE_SME,TAURIAN,,Taurian MPS Limited,listing_date
+Vigor Plast India Limited,2025-09-12,SME,NSE_SME,VIGOR,,Vigor Plast India Limited,listing_date
+Optivalue Tek Consulting Limited,2025-09-10,SME,NSE_SME,OPTIVALUE,,Optivalue Tek Consulting Limited,listing_date
+Snehaa Organics Limited,2025-09-05,SME,NSE_SME,SNEHAA,,Snehaa Organics Limited,listing_date
+Current Infraprojects Limited,2025-09-03,SME,NSE_SME,CURRENT,,Current Infraprojects Limited,listing_date
+Sattva Engineering Construction Limited,2025-09-03,SME,NSE_SME,SATTVAENGG,,Sattva Engineering Construction Limited,listing_date
+Classic Electrodes (India) Limited,2025-09-01,SME,NSE_SME,CLASSICEIL,,Classic Electrodes (India) Limited,listing_date
+Anondita Medicare Limited,2025-09-01,SME,NSE_SME,ANONDITA,,Anondita Medicare Limited,listing_date
+Shivashrit Foods Limited,2025-09-01,SME,NSE_SME,SHIVASHRIT,,Shivashrit Foods Limited,listing_date
+Arc Insulation & Insulators Limited,2025-08-29,SME,NSE_SME,ARCIIL,,ARC Insulation & Insulators Limited,listing_date
+Studio Lsd Limited,2025-08-25,SME,NSE_SME,STUDIOLSD,,Studio LSD Limited,listing_date
+Mahendra Realtors & Infrastructure Limited,2025-08-20,SME,NSE_SME,MRIL,,Mahendra Realtors & Infrastructure Limited,listing_date
+Medistep Healthcare Limited,2025-08-18,SME,NSE_SME,MEDISTEP,,Medistep Healthcare Limited,listing_date
+Anb Metal Cast Limited,2025-08-18,SME,NSE_SME,AMCL,,ANB Metal Cast Limited,listing_date
+Sawaliya Food Products Limited,2025-08-15,SME,NSE_SME,SAWALIYA,,Sawaliya Food Products Limited,listing_date
+Connplex Cinemas Limited,2025-08-14,SME,NSE_SME,CONNPLEX,,Connplex Cinemas Limited,listing_date
+Aaradhya Disposal Industries Limited,2025-08-11,SME,NSE_SME,AARADHYA,,Aaradhya Disposal Industries Limited,listing_date
+Bhadora Industries Limited,2025-08-11,SME,NSE_SME,BHADORA,,Bhadora Industries Limited,listing_date
+Parth Electricals & Engineering Limited,2025-08-11,SME,NSE_SME,PARTH,,Parth Electricals & Engineering Limited,listing_date
+Jyoti Global Plast Limited,2025-08-11,SME,NSE_SME,JYOTIGLOBL,,Jyoti Global Plast Limited,listing_date
+Flysbs Aviation Limited,2025-08-08,SME,NSE_SME,FLYSBS,,FlySBS Aviation Limited,listing_date
+Renol Polychem Limited,2025-08-07,SME,NSE_SME,RNPL,,Renol Polychem Limited,listing_date
+Cash Ur Drive Marketing Limited,2025-08-07,SME,NSE_SME,CUDML,,Cash Ur Drive Marketing Limited,listing_date
+Kaytex Fabrics Limited,2025-08-05,SME,NSE_SME,KAYTEX,,Kaytex Fabrics Limited,listing_date
+Sellowrap Industries Limited,2025-08-01,SME,NSE_SME,SELLOWRAP,,Sellowrap Industries Limited,listing_date
+TSC India Limited,2025-07-30,SME,NSE_SME,TSC,,TSC India Limited,listing_date
+Savy Infra & Logistics Limited,2025-07-28,SME,NSE_SME,SAVY,,Savy Infra and Logistics Limited,listing_date
+Spunweb Nonwoven Limited,2025-07-21,SME,NSE_SME,SPUNWEB,,Spunweb Nonwoven Limited,listing_date
+Smarten Power Systems Limited,2025-07-14,SME,NSE_SME,SMARTEN,,Smarten Power Systems Limited,listing_date
+Happy Square Outsourcing Services Limited,2025-07-10,SME,NSE_SME,WHITEFORCE,,Happy Square Outsourcing Services Limited,listing_date
+Silky Overseas Limited,2025-07-07,SME,NSE_SME,SILKY,,Silky Overseas Limited,listing_date
+Pushpa Jewellers Limited,2025-07-07,SME,NSE_SME,PUSHPA,,Pushpa Jewellers Limited,listing_date
+Cedaar Textile Limited,2025-07-07,SME,NSE_SME,CEDAAR,,Cedaar Textile Limited,listing_date
+Pro Fx Tech Limited,2025-07-03,SME,NSE_SME,PROFX,,Pro FX Tech Limited,listing_date
+Moving Media Entertainment Limited,2025-07-03,SME,NSE_SME,MMEL,,Moving Media Entertainment Limited,listing_date
+Suntech Infra Solutions Limited,2025-07-02,SME,NSE_SME,SUNTECH,,Suntech Infra Solutions Limited,listing_date
+Rama Telecom Limited,2025-07-02,SME,NSE_SME,RTL,,Rama Telecom Limited,listing_date
+Mayasheel Ventures Limited,2025-06-27,SME,NSE_SME,MAYASHEEL,,Mayasheel Ventures Limited,listing_date
+Safe Enterprises Retail Fixtures Limited,2025-06-27,SME,NSE_SME,SAFEENTP,,Safe Enterprises Retail Fixtures Limited,listing_date
+Aakaar Medical Technologies Limited,2025-06-27,SME,NSE_SME,AAKAAR,,Aakaar Medical Technologies Limited,listing_date
+Influx Healthtech Limited,2025-06-25,SME,NSE_SME,INFLUX,,Influx Healthtech Limited,listing_date
+Eppeltone Engineers Limited,2025-06-24,SME,NSE_SME,EEPL,,Eppeltone Engineers Limited,listing_date
+Samay Project Services Limited,2025-06-23,SME,NSE_SME,SAMAY,,Samay Project Services Limited,listing_date
+Patil Automation Limited,2025-06-23,SME,NSE_SME,PATILAUTOM,,Patil Automation Limited,listing_date
+Monolithisch India Limited,2025-06-19,SME,NSE_SME,MONOLITH,,Monolithisch India Limited,listing_date
+Jainik Power Cables Limited,2025-06-17,SME,NSE_SME,JAINIK,,Jainik Power Cables Limited,listing_date
+Sacheerome Limited,2025-06-16,SME,NSE_SME,SACHEEROME,,Sacheerome Limited,listing_date
+Ganga Bath Fittings Limited,2025-06-11,SME,NSE_SME,GANGABATH,,Ganga Bath Fittings Limited,listing_date
+NR Vandana Tex Industries Limited,2025-06-04,SME,NSE_SME,NRVANDANA,,N R Vandana Tex Industries Limited,listing_date
+Neptune Petrochemicals Limited,2025-06-04,SME,NSE_SME,NEPTUNE,,Neptune Petrochemicals Limited,listing_date
+Blue Water Logistics Limited,2025-06-03,SME,NSE_SME,BLUEWATER,,Blue Water Logistics Limited,listing_date
+Dar Credit & Capital Limited,2025-05-28,SME,NSE_SME,DCCL,,Dar Credit & Capital Limited,listing_date
+Accretion Pharmaceuticals Limited,2025-05-21,SME,NSE_SME,ACCPL,,Accretion Pharmaceuticals Limited,listing_date
+Integrity Infrabuild Developers Limited,2025-05-20,SME,NSE_SME,INTEGRITY,,Integrity Infrabuild Developers Limited,listing_date
+Virtual Galaxy Infotech Limited,2025-05-19,SME,NSE_SME,VGINFOTECH,,Virtual Galaxy Infotech Limited,listing_date
+Arunaya Organics Limited,2025-05-07,SME,NSE_SME,ARUNAYA,,Arunaya Organics Limited,listing_date
+Iware Supplychain Services Limited,2025-05-06,SME,NSE_SME,IWARE,,Iware Supplychain Services Limited,listing_date
+Tankup Engineers Limited,2025-04-30,SME,NSE_SME,TANKUP,,Tankup Engineers Limited,listing_date
+Shri Ahimsa Naturals Limited,2025-04-02,SME,NSE_SME,SHRIAHIMSA,,Shri Ahimsa Naturals Limited,listing_date
+ATC Energies System Limited,2025-04-02,SME,NSE_SME,ATCENERGY,,ATC Energies System Limited,listing_date
+Active Infrastructures Limited,2025-03-28,SME,NSE_SME,ACTIVEINFR,,Active Infrastructures Limited,listing_date
+Rapid Fleet Management Services Limited,2025-03-28,SME,NSE_SME,RAPIDFLEET,,Rapid Fleet Management Services Limited,listing_date
+Grand Continent Hotels Limited,2025-03-27,SME,NSE_SME,GCHOTELS,,Grand Continent Hotels Limited,listing_date
+Divine Hira Jewellers Limited,2025-03-24,SME,NSE_SME,DIVINEHIRA,,Divine Hira Jewellers Limited,listing_date
+Balaji Phosphates Limited,2025-03-07,SME,NSE_SME,BALAJIPHOS,,Balaji Phosphates Limited,listing_date
+HP Telecom India Limited,2025-02-28,SME,NSE_SME,HPTL,,HP Telecom India Limited,listing_date
+Tejas Cargo India Limited,2025-02-24,SME,NSE_SME,TEJASCARGO,,Tejas Cargo India Limited,listing_date
+Royal Arc Electrodes Limited,2025-02-24,SME,NSE_SME,ROYALARC,,Royal Arc Electrodes Limited,listing_date
+Maxvolt Energy Industries Limited,2025-02-19,SME,NSE_SME,MAXVOLT,,Maxvolt Energy Industries Limited,listing_date
+PS Raj Steels Limited,2025-02-19,SME,NSE_SME,PSRAJ,,P S Raj Steels Limited,listing_date
+Voler Car Limited,2025-02-19,SME,NSE_SME,VOLERCAR,,Voler Car Limited,listing_date
+Chandan Healthcare Limited,2025-02-17,SME,NSE_SME,CHANDAN,,Chandan Healthcare Limited,listing_date
+Eleganz Interiors Limited,2025-02-14,SME,NSE_SME,ELGNZ,,Eleganz Interiors Limited,listing_date
+Readymix Construction Machinery Limited,2025-02-13,SME,NSE_SME,READYMIX,,Readymix Construction Machinery Limited,listing_date
+Ken Enterprises Limited,2025-02-12,SME,NSE_SME,KEN,,Ken Enterprises Limited,listing_date
+Chamunda Electrical Limited,2025-02-11,SME,NSE_SME,CHAMUNDA,,Chamunda Electrical Limited,listing_date
+Rexpro Enterprises Limited,2025-01-29,SME,NSE_SME,REXPRO,,Rexpro Enterprises Limited,listing_date
+Ema Partners India Limited,2025-01-24,SME,NSE_SME,EMAPARTNER,,EMA Partners India Limited,listing_date
+Kabra Jewels Limited,2025-01-22,SME,NSE_SME,KKJEWELS,,Kabra Jewels Limited,listing_date
+Barflex Polyfilms Limited,2025-01-20,SME,NSE_SME,BARFLEX,,Barflex Polyfilms Limited,listing_date
+Delta Autocorp Limited,2025-01-14,SME,NSE_SME,DELTIC,,Delta Autocorp Limited,listing_date
+Anya Polytech & Fertilizers Limited,2025-01-02,SME,NSE_SME,ANYA,,Anya Polytech & Fertilizers Limited,listing_date
+Newmalayalam Steel Limited,2024-12-27,SME,NSE_SME,NMSTEEL,,Newmalayalam Steel Limited,listing_date
+Identical Brains Studios Limited,2024-12-26,SME,NSE_SME,IDENTICAL,,Identical Brains Studios Limited,listing_date
+Purple United Sales Limited,2024-12-18,SME,NSE_SME,PURPLEUTED,,Purple United Sales Limited,listing_date
+Supreme Facility Management Limited,2024-12-15,SME,NSE_SME,SFML,,Supreme Facility Management Limited,listing_date
+Dhanlaxmi Crop Science Limited,2024-12-15,SME,NSE_SME,DHANLAXMI,,Dhanlaxmi Crop Science Limited,listing_date
+Emerald Tyre Manufacturers Limited,2024-12-15,SME,NSE_SME,ETML,,Emerald Tyre Manufacturers Limited,listing_date
+Ganesh Infraworld Limited,2024-12-06,SME,NSE_SME,GANESHIN,,Ganesh Infraworld Limited,listing_date
+Agarwal Toughened Glass India Limited,2024-12-05,SME,NSE_SME,AGARWALTUF,,Agarwal Toughened Glass India Limited,listing_date
+Apex Ecotech Limited,2024-12-04,SME,NSE_SME,APEXECO,,Apex Ecotech Limited,listing_date
+Abha Power and Steel Limited,2024-12-04,SME,NSE_SME,ABHAPOWER,,Abha Power and Steel Limited,listing_date
+Rajputana Biodiesel Limited,2024-12-03,SME,NSE_SME,RAJPUTANA,,Rajputana Biodiesel Limited,listing_date
+C2C Advanced Systems Limited,2024-12-03,SME,NSE_SME,C2C,,C2C Advanced Systems Limited,listing_date
+Lamosaic India Limited,2024-11-29,SME,NSE_SME,LAMOSAIC,,Lamosaic India Limited,listing_date
+Onyx Biotec Limited,2024-11-22,SME,NSE_SME,ONYX,,Onyx Biotec Limited,listing_date
+Neelam Linens and Garments (India) Limited,2024-11-15,SME,NSE_SME,NEELAM,,Neelam Linens and Garments (India) Limited,listing_date
+Usha Financial Services Limited,2024-10-31,SME,NSE_SME,USHAFIN,,Usha Financial Services Limited,listing_date
+OBSC Perfection Limited,2024-10-29,SME,NSE_SME,OBSCP,,OBSC Perfection Limited,listing_date
+Danish Power Limited,2024-10-29,SME,NSE_SME,DANISH,,Danish Power Limited,listing_date
+United Heat Transfer Limited,2024-10-29,SME,NSE_SME,UHTL,,United Heat Transfer Limited,listing_date
+Premium Plast Limited,2024-10-28,SME,NSE_SME,PREMIUM,,Premium Plast Limited,listing_date
+Freshara Agro Exports Limited,2024-10-24,SME,NSE_SME,FRESHARA,,Freshara Agro Exports Limited,listing_date
+Lakshya Powertech Limited,2024-10-23,SME,NSE_SME,LAKSHYA,,Lakshya Powertech Limited,listing_date
+Pranik Logistics Limited,2024-10-17,SME,NSE_SME,PRANIK,,Pranik Logistics Limited,listing_date
+Paramount Dye Tec Limited,2024-10-08,SME,NSE_SME,PARAMOUNT,,Paramount Dye Tec Limited,listing_date
+HVAX Technologies Limited,2024-10-07,SME,NSE_SME,HVAX,,HVAX Technologies Limited,listing_date
+Saj Hotels Limited,2024-10-07,SME,NSE_SME,SAJHOTELS,,Saj Hotels Limited,listing_date
+Forge Auto International Limited,2024-10-04,SME,NSE_SME,FORGEAUTO,,Forge Auto International Limited,listing_date
+Divyadhan Recycling Industries Limited,2024-10-04,SME,NSE_SME,DIVYADHAN,,Divyadhan Recycling Industries Limited,listing_date
+TechEra Engineering LImited,2024-10-03,SME,NSE_SME,TECHERA,,TechEra Engineering (India) Limited,listing_date
+Unilex Colours and Chemicals Limited,2024-10-03,SME,NSE_SME,UNILEX,,Unilex Colours and Chemicals Limited,listing_date
+Thinking Hats Entertainment Solutions Limited,2024-10-03,SME,NSE_SME,THESL,,Thinking Hats Entertainment Solutions Limited,listing_date
+WOL 3D India Limited,2024-09-30,SME,NSE_SME,WOL3D,,Wol 3D India Limited,listing_date
+Rappid Valves (India) Limited,2024-09-30,SME,NSE_SME,RAPPID,,Rappid Valves (India) Limited,listing_date
+SD Retail Limited,2024-09-27,SME,NSE_SME,SDREAMS,,S D Retail Limited,listing_date
+Avi Ansh Textile Limited,2024-09-27,SME,NSE_SME,AVIANSH,,Avi Ansh Textile Limited,listing_date
+Phoenix Overseas Limited,2024-09-27,SME,NSE_SME,PHOGLOBAL,,Phoenix Overseas Limited,listing_date
+BikeWo GreenTech Limited,2024-09-27,SME,NSE_SME,BIKEWO,,Bikewo Green Tech Limited,listing_date
+Kalana Ispat Limited,2024-09-26,SME,NSE_SME,KALANA,,Kalana Ispat Limited,listing_date
+Paramount Speciality Forgings Limited,2024-09-25,SME,NSE_SME,PSFL,,Paramount Speciality Forgings Limited,listing_date
+Pelatro Limited,2024-09-24,SME,NSE_SME,PELATRO,,Pelatro Limited,listing_date
+Deccan Transcon Leasing Limited,2024-09-24,SME,NSE_SME,DECCANTRAN,,Deccan Transcon Leasing Limited,listing_date
+Osel Devices Limited,2024-09-24,SME,NSE_SME,OSELDEVICE,,Osel Devices Limited,listing_date
+Envirotech Systems Limited,2024-09-24,SME,NSE_SME,ENVIRO,,Envirotech Systems Limited,listing_date
+Excellent Wires and Packaging Limited,2024-09-19,SME,NSE_SME,EXCELLENT,,Excellent Wires and Packaging Limited,listing_date
+Innomet Advanced Materials Limited,2024-09-15,SME,NSE_SME,INNOMET,,Innomet Advanced Materials Limited,listing_date
+SPP Polymer Limited,2024-09-17,SME,NSE_SME,SPPPOLY,,SPP Polymer Limited,listing_date
+Shubhshree Biofuels Energy,2024-09-15,SME,NSE_SME,SHUBHSHREE,,Shubhshree Biofuels Energy Limited,listing_date
+Gajanand International Limited,2024-09-15,SME,NSE_SME,GAJANAND,,Gajanand International Limited,listing_date
+Aditya Ultra Steel Limited,2024-09-16,SME,NSE_SME,AUSL,,Aditya Ultra Steel Limited,listing_date
+Vision Infra Equipment Solutions Limited,2024-09-15,SME,NSE_SME,VIESL,,Vision Infra Equipment Solutions Limited,listing_date
+My Mudra Fincorp Limited,2024-09-12,SME,NSE_SME,MYMUDRA,,My Mudra Fincorp Limited,listing_date
+Namo eWaste Management Limited,2024-09-11,SME,NSE_SME,NAMOEWASTE,,Namo eWaste Management Limited,listing_date
+Jeyyam Global Foods Limited,2024-09-09,SME,NSE_SME,JEYYAM,,Jeyyam Global Foods Limited,listing_date
+Boss Packaging Solutions Limited,2024-09-06,SME,NSE_SME,BOSS,,Boss Packaging Solutions Limited,listing_date
+Paramatrix Technologies Limited,2024-09-04,SME,NSE_SME,PARAMATRIX,,Paramatrix Technologies Limited,listing_date
+Aeron Composite Limited,2024-09-04,SME,NSE_SME,AERON,,Aeron Composite Limited,listing_date
+Jay Bee Laminations Limited,2024-09-03,SME,NSE_SME,JAYBEE,,Jay Bee Laminations Limited,listing_date
+Indian Phosphate Limited,2024-09-03,SME,NSE_SME,IPHL,,Indian Phosphate Limited,listing_date
+Vdeal System Limited,2024-09-03,SME,NSE_SME,VDEAL,,Vdeal System Limited,listing_date
+Ideal Technoplast Industries,2024-08-28,SME,NSE_SME,IDEALTECHO,,Ideal Technoplast Industries Limited,listing_date
+QVC Exports Limited,2024-08-28,SME,NSE_SME,QVCEL,,QVC Exports Limited,listing_date
+Brace Port Logistics Limited,2024-08-26,SME,NSE_SME,BRACEPORT,,Brace Port Logistics Limited,listing_date
+Forcas Studio Limited,2024-08-26,SME,NSE_SME,FORCAS,,Forcas Studio Limited,listing_date
+Solve Plastic Products,2024-08-21,SME,NSE_SME,BALCO,,Solve Plastic Products Limited,listing_date
+Positron Energy Limited,2024-08-20,SME,NSE_SME,POSITRON,,Positron Energy Limited,listing_date
+Sunlite Recycling Industries Limited,2024-08-20,SME,NSE_SME,SUNLITE,,Sunlite Recycling Industries Limited,listing_date
+Aesthetik Engineers Limited,2024-08-16,SME,NSE_SME,AESTHETIK,,Aesthetik Engineers Limited,listing_date
+Picture Post Studios Limited,2024-08-09,SME,NSE_SME,PPSL,,Picturepost Studios Limited,listing_date
+Dhariwalcorp Limited,2024-08-08,SME,NSE_SME,DHARIWAL,,Dhariwalcorp Limited,listing_date
+Utssav Cz Gold Jewels Limited,2024-08-07,SME,NSE_SME,UTSSAV,,Utssav CZ Gold Jewels Limited,listing_date
+Rajputana Industries Limited,2024-08-06,SME,NSE_SME,RAJINDLTD,,Rajputana Industries Limited,listing_date
+Ashapura Logistics Limited,2024-08-06,SME,NSE_SME,ASHALOG,,Ashapura Logistics Limited,listing_date
+Bulkcorp International Limited,2024-08-06,SME,NSE_SME,BULKCORP,,Bulkcorp International Limited,listing_date
+Sathlokhar Synergys E&C Global Limited,2024-08-06,SME,NSE_SME,SSEGL,,Sathlokhar Synergys E&C Global Limited,listing_date
+Esprit Stones Limited,2024-08-02,SME,NSE_SME,ESPRIT,,Esprit Stones Limited,listing_date
+SA Tech Software India Limited,2024-08-02,SME,NSE_SME,SATECH,,S A Tech Software India Limited,listing_date
+Trom Industries Limited,2024-08-01,SME,NSE_SME,TROM,,Trom Industries Limited,listing_date
+Aprameya Engineering Limited,2024-08-01,SME,NSE_SME,APRAMEYA,,Aprameya Engineering Limited,listing_date
+Chetana Education Limited,2024-07-31,SME,NSE_SME,CHETANA,,Chetana Education Limited,listing_date
+Manglam Infra and Engineering Limited,2024-07-31,SME,NSE_SME,MIEL,,Manglam Infra & Engineering Limited,listing_date
+V.L.Infraprojects Limited,2024-07-30,SME,NSE_SME,VLINFRA,,V.L.Infraprojects Limited,listing_date
+SAR Televenture Limited (FPO),2023-11-08,SME,NSE_SME,SARTELE,,Sar Televenture Limited,listing_date
+RNFI Services Limited,2024-07-29,SME,NSE_SME,RNFI,,RNFI Services Limited,listing_date
+Macobs Technologies Limited,2024-07-24,SME,NSE_SME,MACOBSTECH,,Macobs Technologies Limited,listing_date
+Kataria Industries Limited,2024-07-24,SME,NSE_SME,KATARIA,,Kataria Industries Limited,listing_date
+Tunwal E-Motors Limited,2024-07-23,SME,NSE_SME,TUNWAL,,Tunwal E-Motors Limited,listing_date
+Sati Poly Plast Limited,2024-07-22,SME,NSE_SME,SATIPOLY,,Sati Poly Plast Limited,listing_date
+Prizor Viztech Limited,2024-07-22,SME,NSE_SME,PRIZOR,,Prizor Viztech Limited,listing_date
+Sahaj Solar Limited,2024-07-19,SME,NSE_SME,SAHAJSOLAR,,Sahaj Solar Limited,listing_date
+Ganesh Green Bharat Limited,2024-07-12,SME,NSE_SME,GGBL,,Ganesh Green Bharat Limited,listing_date
+Effwa Infra & Research Limited,2024-07-15,SME,NSE_SME,EFFWA,,Effwa Infra & Research Limited,listing_date
+Nephro Care India Limited,2024-07-05,SME,NSE_SME,NEPHROCARE,,Nephro Care India Limited,listing_date
+Diensten Tech Limited,2024-07-03,SME,NSE_SME,DTL,,Diensten Tech Limited,listing_date
+Akiko Global Services Limited,2024-07-02,SME,NSE_SME,AKIKO,,Akiko Global Services Limited,listing_date
+Petro Carbon and Chemicals Limited,2024-07-02,SME,NSE_SME,PCCL,,Petro Carbon and Chemicals Limited,listing_date
+Divine Power Energy Limited,2024-07-02,SME,NSE_SME,DPEL,,Divine Power Energy Limited,listing_date
+Visaman Global Sales Limited,2024-07-01,SME,NSE_SME,VISAMAN,,Visaman Global Sales Limited,listing_date
+Shivalic Power Control Limited,2024-07-01,SME,NSE_SME,SPCL,,Shivalic Power Control Limited,listing_date
+Mason Infratech Limited,2024-07-01,SME,NSE_SME,MASON,,Mason Infratech Limited,listing_date
+Sylvan Plyboard (India) Limited,2024-07-01,SME,NSE_SME,SYLVANPLY,,Sylvan Plyboard (India) Limited,listing_date
+Medicamen Organics Limited,2024-06-28,SME,NSE_SME,MEDIORG,,Medicamen Organics Limited,listing_date
+Winny Immigration and Education Services Limited,2024-06-27,SME,NSE_SME,WINNY,,Winny Immigration & Education Services Limited,listing_date
+Falcon Technoprojects India Limited,2024-06-26,SME,NSE_SME,FALCONTECH,,Falcon Technoprojects India Limited,listing_date
+Durlax Top Surface Limited,2024-06-26,SME,NSE_SME,DURLAX,,Durlax Top Surface Limited,listing_date
+GP Eco Solutions India Limited,2024-06-24,SME,NSE_SME,GPECO,,GP Eco Solutions India Limited,listing_date
+TBI Corn Limited,2024-06-07,SME,NSE_SME,TBI,,TBI Corn Limited,listing_date
+Aimtron Electronics Limited,2024-06-06,SME,NSE_SME,AIMTRON,,Aimtron Electronics Limited,listing_date
+Beacon Trusteeship Limited,2024-06-04,SME,NSE_SME,BEACON,,Beacon Trusteeship Limited,listing_date
+Vilas Transcore Limited,2024-06-03,SME,NSE_SME,VILAS,,Vilas Transcore Limited,listing_date
+GSM Foils Limited,2024-05-31,SME,NSE_SME,GSMFOILS,,GSM Foils Limited,listing_date
+Rulka Electricals Limited,2024-05-24,SME,NSE_SME,RULKA,,Rulka Electricals Limited,listing_date
+HOAC Foods India Limited,2024-05-24,SME,NSE_SME,HOACFOODS,,Hoac Foods India Limited,listing_date
+Quest Laboratories Limited,2024-05-23,SME,NSE_SME,QUESTLAB,,Quest Laboratories Limited,listing_date
+Indian Emulsifier Limited,2024-05-22,SME,NSE_SME,IEML,,Indian Emulsifiers Limited,listing_date
+ABS Marine Services Limited,2024-05-21,SME,NSE_SME,ABSMARINE,,ABS Marine Services Limited,listing_date
+Veritaas Advertising Limited,2024-05-21,SME,NSE_SME,VERITAAS,,Veritaas Advertising Limited,listing_date
+Mandeep Auto Industries Limited,2024-05-21,SME,NSE_SME,MANDEEP,,Mandeep Auto Industries Limited,listing_date
+Premier Roadlines Limited,2024-05-15,SME,NSE_SME,PRLIND,,Premier Roadlines Limited,listing_date
+Silkflex Polymers (India) Limited,2024-05-15,SME,NSE_SME,SILKFLEX,,Silkflex Polymers (India) Limited,listing_date
+Refractory Shapes Limited,2024-05-15,SME,NSE_SME,REFRACTORY,,Refractory Shapes Limited,listing_date
+Winsol Engineers Limited,2024-05-15,SME,NSE_SME,WINSOL,,Winsol Engineers Limited,listing_date
+Slone Infosystems Limited,2024-05-10,SME,NSE_SME,SLONE,,Slone Infosystems Limited,listing_date
+Grill Splendour Services Limited,2024-04-23,SME,NSE_SME,BIRDYS,,Grill Splendour Services Limited,listing_date
+Ramdevbaba Solvent Limited,2024-04-23,SME,NSE_SME,RBS,,Ramdevbaba Solvent Limited,listing_date
+DCG Cables & Wires Limited,2024-04-15,SME,NSE_SME,DCG,,DCG Cables & Wires Limited,listing_date
+Teerth Gopicon Limited,2024-04-15,SME,NSE_SME,TGL,,Teerth Gopicon Limited,listing_date
+Creative Graphics Solutions India Limited,2024-04-09,SME,NSE_SME,CGRAPHICS,,Creative Graphics Solutions India Limited,listing_date
+K2 Infragen Limited,2024-04-08,SME,NSE_SME,K2INFRA,,K2 Infragen Limited,listing_date
+Yash Optics & Lens Limited,2024-04-08,SME,NSE_SME,YASHOPTICS,,Yash Optics & Lens Limited,listing_date
+Radiowalla Network Limited,2024-04-05,SME,NSE_SME,RADIOWALLA,,Radiowalla Network Limited,listing_date
+TAC Infosec Limited,2024-04-05,SME,NSE_SME,TAC,,TAC Infosec Limited,listing_date
+Trust Fintech Limited,2024-04-04,SME,NSE_SME,TRUST,,Trust Fintech Limited,listing_date
+Blue Pebble Limited,2024-04-03,SME,NSE_SME,BLUEPEBBLE,,Blue Pebble Limited,listing_date
+Aspire & Innovative Advertising Limited,2024-04-04,SME,NSE_SME,ASPIRE,,Aspire & Innovative Advertising Limited,listing_date
+Vishwas Agri Seeds Limited,2024-04-01,SME,NSE_SME,VISHWAS,,Vishwas Agri Seeds Limited,listing_date
+Omfurn India Limited,2017-10-13,SME,NSE_SME,OMFURN,,Omfurn India Limited,listing_date
+Enfuse Solutions Limited,2024-03-22,SME,NSE_SME,ENFUSE,,Enfuse Solutions Limited,listing_date
+Enser Communications Limited,2024-03-22,SME,NSE_SME,ENSER,,Enser Communications Limited,listing_date
+AVP Infracon Limited,2024-03-20,SME,NSE_SME,AVPINFRA,,AVP Infracon Limited,listing_date
+Signoria Creation Limited,2024-03-19,SME,NSE_SME,SIGNORIA,,Signoria Creation Limited,listing_date
+Pratham EPC Projects Limited,2024-03-15,SME,NSE_SME,PRATHAM,,Pratham EPC Projects Limited,listing_date
+Shree Karni Fabcom Limited,2024-03-15,SME,NSE_SME,SHREEKARNI,,Shree Karni Fabcom Limited,listing_date
+Sona Machinery Limited,2024-03-15,SME,NSE_SME,SONAMAC,,Sona Machinery Limited,listing_date
+VR Infraspace Limited,2024-03-15,SME,NSE_SME,VR,,V R Infraspace Limited,listing_date
+M.V.K. Agro Food Product Ltd,2024-03-07,SME,NSE_SME,MVKAGRO,,M.V.K. Agro Food Product Limited,listing_date
+Purv Flexipack Limited,2024-03-05,SME,NSE_SME,PURVFLEXI,,Purv Flexipack Limited,listing_date
+Owais Metal and Mineral Processing Limited,2024-03-04,SME,NSE_SME,OWAIS,,Owais Metal And Mineral Processing Limited,listing_date
+Sadhav Shipping Limited,2024-03-01,SME,NSE_SME,SADHAV,,Sadhav Shipping Limited,listing_date
+Deem Roll Tech Limited,2024-02-27,SME,NSE_SME,DEEM,,Deem Roll Tech Limited,listing_date
+Zenith Drugs Limited,2024-02-27,SME,NSE_SME,ZENITHDRUG,,Zenith Drugs Limited,listing_date
+Thaai Casting Limited,2024-02-23,SME,NSE_SME,TCL,,Thaai Casting Limited,listing_date
+Interiors and More Limited,2024-02-23,SME,NSE_SME,INM,,Interiors & More Limited,listing_date
+Atmastco Limited,2024-02-23,SME,NSE_SME,ATMASTCO,,Atmastco Limited,listing_date
+Esconet Technologies Limited,2024-02-23,SME,NSE_SME,ESCONET,,Esconet Technologies Limited,listing_date
+Wise Travel India Limited,2024-02-19,SME,NSE_SME,WTICAB,,Wise Travel India Limited,listing_date
+Polysil Irrigation Systems Limited,2024-02-15,SME,NSE_SME,POLYSIL,,Polysil Irrigation Systems Limited,listing_date
+Alpex Solar Limited,2024-02-15,SME,NSE_SME,ALPEXSOLAR,,Alpex Solar Limited,listing_date
+Italian Edibles Limited,2024-02-15,SME,NSE_SME,ITALIANE,,Italian Edibles Limited,listing_date
+Baweja Studios Limited,2024-02-06,SME,NSE_SME,BAWEJA,,Baweja Studios Limited,listing_date
+Megatherm Induction Limited,2024-02-05,SME,NSE_SME,MEGATHERM,,Megatherm Induction Limited,listing_date
+DelaPlex Limited,2024-02-02,SME,NSE_SME,DELAPLEX,,Delaplex Limited,listing_date
+Fonebox Retail Limited,2024-02-02,SME,NSE_SME,FONEBOX,,Fonebox Retail Limited,listing_date
+Docmode Health Technologies Limited,2024-02-02,SME,NSE_SME,DHTL,,Docmode Health Technologies Limited,listing_date
+Addictive Learning Technology Limited,2024-01-30,SME,NSE_SME,ADDICTIVE,,Addictive Learning Technology Limited,listing_date
+Konstelec Engineers Limited,2024-01-30,SME,NSE_SME,KONSTELEC,,Konstelec Engineers Limited,listing_date
+Maxposure Limited,2024-01-23,SME,NSE_SME,MAXPOSURE,,Maxposure Limited,listing_date
+Australian Premium Solar (India) Limited,2024-01-15,SME,NSE_SME,APS,,Australian Premium Solar (India) Limited,listing_date
+IBL Finance Limited,2024-01-15,SME,NSE_SME,IBLFL,,IBL Finance Limited,listing_date
+Kaushalya Logistics Limited,2024-01-08,SME,NSE_SME,KLL,,Kaushalya Logistics Limited,listing_date
+Kay Cee Energy & Infra Limited,2024-01-05,SME,NSE_SME,KCEIL,,Kay Cee Energy & Infra Limited,listing_date
+HRH Next Services Limited,2024-01-03,SME,NSE_SME,HRHNEXT,,HRH Next Services Limited,listing_date
+Akanksha Power and Infrastructure Limited,2024-01-03,SME,NSE_SME,AKANKSHA,,Akanksha Power and Infrastructure Limited,listing_date
+Sameera Agro And Infra Limited,2024-01-01,SME,NSE_SME,SAIFL,,Sameera Agro And Infra Limited,listing_date
+Trident Techlabs Limited,2023-12-29,SME,NSE_SME,TECHLABS,,Trident Techlabs Limited,listing_date
+Supreme Power Equipment Limited,2023-12-29,SME,NSE_SME,SUPREMEPWR,,Supreme Power Equipment Limited,listing_date
+Indifra Limited,2023-12-29,SME,NSE_SME,INDIFRA,,Indifra Limited,listing_date
+Electro Force (India) Limited,2023-12-27,SME,NSE_SME,EFORCE,,Electro Force (India) Limited,listing_date
+Shree OSFM E-Mobility Limited,2023-12-21,SME,NSE_SME,SHREEOSFM,,Shree OSFM E-Mobility Limited,listing_date
+SJ Logistics (India) Limited,2023-12-19,SME,NSE_SME,SJLOGISTIC,,S J Logistics (India) Limited,listing_date
+Presstonic Engineering Limited,2023-12-15,SME,NSE_SME,PRESSTONIC,,Presstonic Engineering Limited,listing_date
+Accent Microcell Limited,2023-12-15,SME,NSE_SME,ACCENTMIC,,Accent Microcell Limited,listing_date
+Graphisads Limited,2023-12-15,SME,NSE_SME,GRAPHISAD,,Graphisads Limited,listing_date
+Sheetal Universal Limited,2023-12-11,SME,NSE_SME,SHEETAL,,Sheetal Universal Limited,listing_date
+Net Avenue Technologies Limited,2023-12-08,SME,NSE_SME,CBAZAAR,,Net Avenue Technologies Limited,listing_date
+Marinetrans India Limited,2023-12-08,SME,NSE_SME,MARINETRAN,,Marinetrans India Limited,listing_date
+Rockingdeals Circular Economy Limited,2023-11-30,SME,NSE_SME,ROCKINGDCE,,Rockingdeals Circular Economy Limited,listing_date
+Sunrest Lifescience Limited,2023-11-20,SME,NSE_SME,SUNREST,,Sunrest Lifescience Limited,listing_date
+Baba Food Processing limited,2023-11-15,SME,NSE_SME,BABAFP,,Baba Food Processing (India) Limited,listing_date
+Micropro Software Solutions Limited,2023-11-10,SME,NSE_SME,MICROPRO,,Micropro Software Solutions Limited,listing_date
+Maitreya Medicare Limited,2023-11-07,SME,NSE_SME,MAITREYA,,Maitreya Medicare Limited,listing_date
+Transteel Seating Technologies Limited,2023-11-06,SME,NSE_SME,TRANSTEEL,,Transteel Seating Technologies Limited,listing_date
+Paragon Fine And Speciality Chemicals Limited,2023-11-03,SME,NSE_SME,PARAGON,,Paragon Fine and Speciality Chemical Limited,listing_date
+Shanthala FMCG Products Limited,2023-11-03,SME,NSE_SME,SHANTHALA,,Shanthala FMCG Products Limited,listing_date
+On Door Concepts Limited,2023-11-01,SME,NSE_SME,ONDOOR,,On Door Concepts Limited,listing_date
+Rajgor Castor Derivatives Limited,2023-10-31,SME,NSE_SME,RCDL,,Rajgor Castor Derivatives Limited,listing_date
+WomanCart Limited,2023-10-27,SME,NSE_SME,WOMANCART,,Womancart Limited,listing_date
+Committed Cargo Care Limited,2023-10-15,SME,NSE_SME,COMMITTED,,Committed Cargo Care Limited,listing_date
+Plada Infotech Services Limited,2023-10-15,SME,NSE_SME,PLADAINFO,,Plada Infotech Services Limited,listing_date
+Sharp Chucks and Machines limited,2023-10-15,SME,NSE_SME,SCML,,Sharp Chucks and Machines Limited,listing_date
+Karnika Industries Limited,2023-10-15,SME,NSE_SME,KARNIKA,,Karnika Industries Limited,listing_date
+Goyal Salt limited,2023-10-11,SME,NSE_SME,GOYALSALT,,Goyal Salt Limited,listing_date
+OneClick Logistics Limited,2023-10-11,SME,NSE_SME,OLIL,,Oneclick Logistics India Limited,listing_date
+Vishnusurya Projects and Infra Limited,2023-10-10,SME,NSE_SME,VISHNUINFR,,Vishnusurya Projects and Infra Limited,listing_date
+Kontor Space Limited,2023-10-10,SME,NSE_SME,KONTOR,,Kontor Space Limited,listing_date
+E Factor Experiences Limited,2023-10-09,SME,NSE_SME,EFACTOR,,E Factor Experiences Limited,listing_date
+Arabian Petroleum Limited,2023-10-09,SME,NSE_SME,ARABIAN,,Arabian Petroleum Limited,listing_date
+Vinyas Innovative Technologies Limited,2023-10-06,SME,NSE_SME,VINYAS,,Vinyas Innovative Technologies Limited,listing_date
+Inspire Films Limited,2023-10-05,SME,NSE_SME,INSPIRE,,Inspire Films Limited,listing_date
+Newjaisa Technologies Limited,2023-10-05,SME,NSE_SME,NEWJAISA,,Newjaisa Technologies Limited,listing_date
+Digikore Studios limited,2023-10-04,SME,NSE_SME,DIGIKORE,,Digikore Studios Limited,listing_date
+Mangalam Alloys Limited,2023-10-04,SME,NSE_SME,MAL,,Mangalam Alloys Limited,listing_date
+Saakshi Medtech and Panelslimited,2023-10-03,SME,NSE_SME,SAAKSHI,,Saakshi Medtech and Panels Limited,listing_date
+Master Components Limited,2023-09-29,SME,NSE_SME,MASTER,,Master Components Limited,listing_date
+Cellecor Gadgets Limited,2023-09-28,SME,NSE_SME,CELLECOR,,Cellecor Gadgets Limited,listing_date
+Hi-Green Carbon Limited,2023-09-28,SME,NSE_SME,HIGREEN,,Hi-Green Carbon Limited,listing_date
+Marco Cables & Conductors Limited,2023-09-28,SME,NSE_SME,MARCO,,Marco Cables & Conductors Limited,listing_date
+Kody Technolab Limited,2023-09-27,SME,NSE_SME,KODYTECH,,Kody Technolab Limited,listing_date
+Madhusudan Masala Limited,2023-09-26,SME,NSE_SME,MADHUSUDAN,,Madhusudan Masala Limited,listing_date
+Chavda Infra Limited,2023-09-25,SME,NSE_SME,CHAVDA,,Chavda Infra Limited,listing_date
+Holmarc Opto-Mechatronics Limited,2023-09-25,SME,NSE_SME,HOLMARC,,Holmarc Opto-Mechatronics Limited,listing_date
+Jiwanram Sheoduttrai Industries Limited,2023-09-15,SME,NSE_SME,JIWANRAM,,Jiwanram Sheoduttrai Industries Limited,listing_date
+Saroja Pharma Industries India Limited,2023-09-15,SME,NSE_SME,SAROJA,,Saroja Pharma Industries India Limited,listing_date
+Pramara Promotions Limited,2023-09-15,SME,NSE_SME,PRAMARA,,Pramara Promotions Limited,listing_date
+Basilic Fly Studio Limited,2023-09-11,SME,NSE_SME,BASILIC,,Basilic Fly Studio Limited,listing_date
+Mono Pharmacare Limited,2023-09-07,SME,NSE_SME,MONOPHARMA,,Mono Pharmacare Limited,listing_date
+CPS Shapers Limited,2023-09-07,SME,NSE_SME,CPS,,C P S Shapers Limited,listing_date
+Sungarner Energies Limited,2023-08-31,SME,NSE_SME,SEL,,Sungarner Energies Limited,listing_date
+Crop Life Science Limited,2023-08-30,SME,NSE_SME,CLSL,,Crop Life Science Limited,listing_date
+Srivari Spices and Foods Limited,2023-08-15,SME,NSE_SME,SSFL,,Srivari Spices And Foods Limited,listing_date
+Yudiz Solutions Limited,2023-08-15,SME,NSE_SME,YUDIZ,,Yudiz Solutions Limited,listing_date
+Sangani Hospitals Limited,2023-08-15,SME,NSE_SME,SANGANI,,Sangani Hospitals Limited,listing_date
+Vinsys IT Services Limited,2023-08-11,SME,NSE_SME,VINSYS,,Vinsys IT Services India Limited,listing_date
+Oriana Power Limited,2023-08-11,SME,NSE_SME,ORIANA,,Oriana Power Limited,listing_date
+Zeal Global Services Limited,2023-08-09,SME,NSE_SME,ZEAL,,Zeal Global Services Limited,listing_date
+Shri Techtex Limited,2023-08-04,SME,NSE_SME,SHRITECH,,Shri Techtex Limited,listing_date
+Yasons Chemex Care Limited,2023-08-03,SME,NSE_SME,YCCL,,Yasons Chemex Care Limited,listing_date
+Service Care Limited,2023-07-26,SME,NSE_SME,SERVICE,,Service Care Limited,listing_date
+Drone Destination Limited,2023-07-21,SME,NSE_SME,DRONE,,Drone Destination Limited,listing_date
+Tridhya Tech Limited,2023-07-15,SME,NSE_SME,TRIDHYA,,Tridhya Tech Limited,listing_date
+Synoptics Technologies Limited,2023-07-15,SME,NSE_SME,SYNOPTICS,,Synoptics Technologies Limited,listing_date
+Global Pet Industries Limited,2023-07-10,SME,NSE_SME,GLOBALPET,,Global Pet Industries Limited,listing_date
+Pentagon Rubber Limited,2023-07-07,SME,NSE_SME,PENTAGON,,Pentagon Rubber Limited,listing_date
+Essen Speciality Films Limited,2023-07-06,SME,NSE_SME,ESFL,,Essen Speciality Films Limited,listing_date
+Greenchef Appliances Limited,2023-07-06,SME,NSE_SME,GREENCHEF,,Greenchef Appliances Limited,listing_date
+Magson Retail And Distribution Limited,2023-07-06,SME,NSE_SME,MAGSON,,Magson Retail And Distribution Limited,listing_date
+Vilin Bio Med Limited,2023-06-30,SME,NSE_SME,VILINBIO,,Vilin Bio Med Limited,listing_date
+Aatmaj Healthcare Limited,2023-06-30,SME,NSE_SME,AATMAJ,,Aatmaj Healthcare Limited,listing_date
+Cell Point (India) Limited,2023-06-28,SME,NSE_SME,CELLPOINT,,Cell Point (India) Limited,listing_date
+Spectrum Talent Management Limited,2023-06-22,SME,NSE_SME,SPECTSTM,,Spectrum Talent Management Limited,listing_date
+Urban Enviro Waste Management Limited,2023-06-22,SME,NSE_SME,URBAN,,Urban Enviro Waste Management Limited,listing_date
+Kore Digital Limited,2023-06-15,SME,NSE_SME,KDL,,Kore Digital Limited,listing_date
+Sahana System Limited,2023-06-15,SME,NSE_SME,SAHANA,,Sahana System Limited,listing_date
+Infollion Research Services Limited,2023-06-08,SME,NSE_SME,INFOLLION,,Infollion Research Services Limited,listing_date
+Proventus Agrocom Limited,2023-06-05,SME,NSE_SME,PROV,,Proventus Agrocom Limited,listing_date
+Crayons Advertising Limited,2023-06-02,SME,NSE_SME,CRAYONS,,Crayons Advertising Limited,listing_date
+Vasa Denticity Limited,2023-06-02,SME,NSE_SME,DENTALKART,,Vasa Denticity Limited,listing_date
+Remus Pharmaceuticals Limited,2023-05-29,SME,NSE_SME,REMUS,,Remus Pharmaceuticals Limited,listing_date
+Krishca Strapping Solutions Limited,2023-05-26,SME,NSE_SME,KRISHCA,,Krishca Strapping Solutions Limited,listing_date
+Auro Impex & Chemicals Limited,2023-05-23,SME,NSE_SME,AUROIMPEX,,Auro Impex  & Chemicals Limited,listing_date
+De Neers Tools Limited,2023-05-11,SME,NSE_SME,DENEERS,,De Neers Tools Limited,listing_date
+Quicktouch Technologies Limited,2023-05-02,SME,NSE_SME,QUICKTOUCH,,Quicktouch Technologies Limited,listing_date
+AG Universal Limited,2023-04-24,SME,NSE_SME,AGUL,,A G Universal Limited,listing_date
+Pattech Fitwell Tube Components Limited,2023-04-21,SME,NSE_SME,PATTECH,,Pattech Fitwell Tube Components Limited,listing_date
+MOS Utility Limited,2023-04-15,SME,NSE_SME,MOS,,Mos Utility Limited,listing_date
+Infinium Pharmachem Limited,2023-04-15,SME,NSE_SME,INFINIUM,,Infinium Pharmachem Limited,listing_date
+Sotac Pharmaceuticals Limited,2023-04-15,SME,NSE_SME,SOTAC,,Sotac Pharmaceuticals Limited,listing_date
+Nirman Agri Genetics Limited,2023-03-28,SME,NSE_SME,NIRMAN,,Nirman Agri Genetics Limited,listing_date
+Quality Foils India Limited,2023-03-24,SME,NSE_SME,QFIL,,Quality Foils (India) Limited,listing_date
+VELS Film International Limited,2023-03-22,SME,NSE_SME,VELS,,Vels Film International Limited,listing_date
+MCON Rasayan India Limited,2023-03-20,SME,NSE_SME,MCON,,Mcon Rasayan India Limited,listing_date
+Systango Technologies Limited,2023-03-15,SME,NSE_SME,SYSTANGO,,Systango Technologies Limited,listing_date
+Vertexplus Technologies Limited,2023-03-15,SME,NSE_SME,VERTEXPLUS,,Vertexplus Technologies Limited,listing_date
+Srivasavi Adhesive Tapes Limited,2023-03-09,SME,NSE_SME,SRIVASAVI,,Srivasavi Adhesive Tapes Limited,listing_date
+Viaz Tyres Limited,2023-03-01,SME,NSE_SME,VIAZ,,Viaz Tyres Limited,listing_date
+Agarwal Float Glass India Limited,2023-02-23,SME,NSE_SME,AGARWALFT,,Agarwal Float Glass India Limited,listing_date
+Lead Reclaim and Rubber Products Limited,2023-02-21,SME,NSE_SME,LRRPL,,Lead Reclaim And Rubber Products Limited,listing_date
+Shera Energy Limited,2023-02-15,SME,NSE_SME,SHERA,,Shera Energy Limited,listing_date
+Gayatri Rubbers and Chemicals Limited,2023-02-07,SME,NSE_SME,GRCL,,Gayatri Rubbers And Chemicals Limited,listing_date
+Aristo Bio-Tech and Lifescience Limited,2023-01-30,SME,NSE_SME,ARISTO,,Aristo Bio-Tech And Lifescience Limited,listing_date
+Ducol Organics And Colours Limited,2023-01-19,SME,NSE_SME,DUCOL,,Ducol Organics And Colours Limited,listing_date
+Chaman Metallics Limited,2023-01-15,SME,NSE_SME,CMNL,,Chaman Metallics Limited,listing_date
+Anlon Technology Solutions Limited,2023-01-10,SME,NSE_SME,ANLON,,Anlon Technology Solutions Limited,listing_date
+RBM Infracon Limited,2023-01-04,SME,NSE_SME,RBMINFRA,,Rbm Infracon Limited,listing_date
+Homesfy Realty Limited,2023-01-02,SME,NSE_SME,HOMESFY,,Homesfy Realty Limited,listing_date
+Moxsh Overseas Educon Limited,2022-12-30,SME,NSE_SME,MOXSH,,Moxsh Overseas Educon Limited,listing_date
+Arihant Academy Limited,2022-12-29,SME,NSE_SME,ARIHANTACA,,Arihant Academy Limited,listing_date
+Uma Converter Limited,2022-12-29,SME,NSE_SME,UMA,,Uma Converter Limited,listing_date
+Dollex Agrotech Limited,2022-12-28,SME,NSE_SME,DOLLEX,,Dollex Agrotech Limited,listing_date
+All E Technologies Limited,2022-12-21,SME,NSE_SME,ALLETEC,,All E Technologies Limited,listing_date
+Arham Technologies Limited,2022-12-15,SME,NSE_SME,ARHAM,,Arham Technologies Limited,listing_date
+Pritika Engineering Components Limited,2022-12-08,SME,NSE_SME,PRITIKA,,Pritika Engineering Components Limited,listing_date
+Baheti Recycling Industries Limited,2022-12-08,SME,NSE_SME,BAHETI,,Baheti Recycling Industries Limited,listing_date
+Amiable Logistics (India) Limited,2022-11-15,SME,NSE_SME,AMIABLE,,Amiable Logistics (India) Limited,listing_date
+Integrated Personnel Services Limited,2022-11-11,SME,NSE_SME,IPSL,,Integrated Personnel Services Limited,listing_date
+Rite Zone Chemcon India Limited,2022-11-11,SME,NSE_SME,RITEZONE,,Rite Zone Chemcon India Limited,listing_date
+Phantom Digital Effects Limited,2022-10-21,SME,NSE_SME,PHANTOMFX,,Phantom Digital Effects Limited,listing_date
+Swastik Pipe Limited,2022-10-15,SME,NSE_SME,SWASTIK,,Swastik Pipe Limited,listing_date
+Lloyds Luxuries Limited,2022-10-11,SME,NSE_SME,LLOYDS,,Lloyds Luxuries Limited,listing_date
+Cyber Media Research & Services Limited,2022-10-10,SME,NSE_SME,CMRSL,,Cyber Media Research & Services Limited,listing_date
+Maks Energy Solutions India Limited,2022-09-28,SME,NSE_SME,MAKS,,Maks Energy Solutions India Limited,listing_date
+Kandarp Digi Smart BPO Limited,2022-09-28,SME,NSE_SME,KANDARP,,Kandarp Digi Smart BPO Limited,listing_date
+Ishan International Limited,2022-09-22,SME,NSE_SME,ISHAN,,Ishan International Limited,listing_date
+Tapi Fruit Processing Limited,2022-09-22,SME,NSE_SME,TAPIFRUIT,,Tapi Fruit Processing Limited,listing_date
+Sabar Flex India Limited,2022-09-21,SME,NSE_SME,SABAR,,Sabar Flex India Limited,listing_date
+Mega Flex Plastics Limited,2022-09-19,SME,NSE_SME,MEGAFLEX,,Mega Flex Plastics Limited,listing_date
+JFL Life Sciences Limited,2022-09-08,SME,NSE_SME,JFLLIFE,,Jfl Life Sciences Limited,listing_date
+Jay Jalaram Technologies Limited,2022-09-08,SME,NSE_SME,KORE,,Jay Jalaram Technologies Limited,listing_date
+Ameya Precision Engineers Limited,2022-09-08,SME,NSE_SME,AMEYA,,Ameya Precision Engineers Limited,listing_date
+Veekayem Fashion and Apparels Limited,2022-08-22,SME,NSE_SME,VEEKAYEM,,Veekayem Fashion and Apparels Limited,listing_date
+Upsurge Seeds of Agriculture Limited,2022-08-11,SME,NSE_SME,USASEEDS,,Upsurge Seeds Of Agriculture Limited,listing_date
+Agni Green Power Limited,2022-08-01,SME,NSE_SME,AGNI,,Agni Green Power Limited,listing_date
+SKP Bearing Industries Limited,2022-07-13,SME,NSE_SME,SKP,,SKP Bearing Industries Limited,listing_date
+KCK Industries Limited,2022-07-08,SME,NSE_SME,KCK,,Kck Industries Limited,listing_date
+Rachana Infrastructure Limited,2022-06-10,SME,NSE_SME,RILINFRA,,Rachana Infrastructure Limited,listing_date
+Fidel Softech Limited,2022-06-10,SME,NSE_SME,FIDEL,,Fidel Softech Limited,listing_date
+Globesecure Technologies Limited,2022-06-02,SME,NSE_SME,GSTL,,Globesecure Technologies Limited,listing_date
+Sonu Infratech Limited,2022-05-15,SME,NSE_SME,SONUINFRA,,Sonu Infratech Limited,listing_date
+PE Analytics Limited,2022-04-04,SME,NSE_SME,PROPEQUITY,,P. E. Analytics Limited,listing_date
+Cool Caps Industries Limited,2022-03-24,SME,NSE_SME,COOLCAPS,,Cool Caps Industries Limited,listing_date
+SP Refractories Limited,2022-03-22,SME,NSE_SME,SPRL,,Sp Refractories Limited,listing_date
+Shigan Quantum Technologies Limited,2022-03-11,SME,NSE_SME,SHIGAN,,Shigan Quantum Technologies Limited,listing_date
+Vaidya Sane Ayurved Laboratories Limited,2022-02-23,SME,NSE_SME,MADHAVBAUG,,Vaidya Sane Ayurved Laboratories Limited,listing_date
+Richa Info Systems Limited,2022-02-21,SME,NSE_SME,RICHA,,Richa Info Systems Limited,listing_date
+Precision Metaliks Limited,2022-02-01,SME,NSE_SME,PRECISION,,Precision Metaliks Limited,listing_date
+Timescan Logistics (India) Limited,2022-01-15,SME,NSE_SME,TIMESCAN,,Timescan Logistics (India) Limited,listing_date
+Vivo Collaboration Solutions Limited,2021-12-31,SME,NSE_SME,VIVO,,Vivo Collaboration Solutions Limited,listing_date
+Foce India Limited,2021-12-28,SME,NSE_SME,FOCE,,Foce India Limited,listing_date
+Nidan Laboratories and Healthcare Limited,2021-11-12,SME,NSE_SME,NIDAN,,Nidan Laboratories and Healthcare Limited,listing_date
+DK Enterprises Global Limited,2021-10-22,SME,NSE_SME,DKEGL,,D.K. Enterprises Global Limited,listing_date
+Destiny Logistics & Infra Limited,2021-10-15,SME,NSE_SME,DESTINY,,Destiny Logistics & Infra Limited,listing_date
+Dynamic Services & Security Limited,2021-10-15,SME,NSE_SME,DYNAMIC,,Dynamic Services & Security Limited,listing_date
+Bombay Metrics Supply Chain Limited,2021-10-15,SME,NSE_SME,BMETRICS,,Bombay Metrics Supply Chain Limited,listing_date
+Jainam Ferro Alloys (I) Limited,2021-10-08,SME,NSE_SME,JAINAM,,Jainam Ferro Alloys (I) Limited,listing_date
+Quadpro ITeS Limited,2021-09-30,SME,NSE_SME,QUADPRO,,Quadpro Ites Limited,listing_date
+BEW Engineering Limited,2021-09-15,SME,NSE_SME,BEWLTD,,BEW Engineering Limited,listing_date
+Rex Pipes and Cables Industries Limited,2021-08-10,SME,NSE_SME,REXPIPES,,Rex Pipes And Cables Industries Limited,listing_date
+Walpar Nutritions Limited,2021-07-15,SME,NSE_SME,WALPAR,,Walpar Nutritions Limited,listing_date
+Abhishek Integrations Limited,2021-06-21,SME,NSE_SME,AILIMITED,,Abhishek Integrations Limited,listing_date
+Siddhika Coatings Limited,2021-04-07,SME,NSE_SME,SIDDHIKA,,Siddhika Coatings Limited,listing_date
+Party Cruisers Limited,2021-03-05,SME,NSE_SME,PARTYCRUS,,Party Cruisers Limited,listing_date
+Ascom Leasing & Investments Ltd,2019-12-06,SME,NSE_SME,ASCOM,,Ascom Leasing & Investments Limited,listing_date
