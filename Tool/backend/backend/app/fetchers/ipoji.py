@@ -193,6 +193,15 @@ def parse_details_page(slug: str, html: str) -> dict:
         "retail_portion_pct": r"Retail Portion\s*[\n:]*\s*([\d.]+%)",
         "registrar": r"Registrar\s*[\n:]*\s*([A-Za-z0-9 .&,]+?)(?:\n|Lead manager)",
         "current_gmp": r"GMP Today:\s*₹?(-?\d+)",
+        # ADDED (bug fix): these 4 fields were never scraped at all -- no key
+        # existed for them, so Issue overview always showed "—" regardless of
+        # real page content. Patterns below are BEST-GUESS, unverified against
+        # real ipoji HTML -- confirm label wording/format on a live page and
+        # adjust if they don't match.
+        "pe_ratio": r"P\s*/?\s*E\s*Ratio\s*[\n:]*\s*([\d.]+)",
+        "roe": r"ROE\s*[\n:]*\s*([\d.]+%?)",
+        "debt_equity": r"Debt\s*/\s*Equity\s*[\n:]*\s*([\d.]+)",
+        "anchor_allocation": r"Anchor (?:Investor )?(?:Allocation|Portion)\s*[\n:]*\s*₹?([\d,]+\s*Cr)",
     }
     for field, pattern in label_patterns.items():
         m = re.search(pattern, full_text)
@@ -787,7 +796,16 @@ def poll_and_save_open_ipos() -> dict:
                 continue
 
             # --- gmp_trend: one upsert per day-row from the GMP history table ---
+            # FIX (bug: GMP/predictions missing on Open cards): latest_gmp_pct
+            # used to only get set when gmp_date_iso == today_iso EXACTLY. If
+            # ipoji hasn't posted today's row yet at poll time, or its date is
+            # off by a day (tz/site timing), this stayed None forever and got
+            # written straight into ipo_live_tracker.current_gmp_percent --
+            # card shows "—" even though gmp_trend has good recent data.
+            # Fixed: track the MOST RECENT dated row instead of requiring an
+            # exact match to today.
             latest_gmp_pct = None
+            latest_gmp_date = None
             for row in result["gmp_daily"]:
                 gmp_date_iso = _to_iso_date(row.get("date"))
                 if not gmp_date_iso:
@@ -799,7 +817,8 @@ def poll_and_save_open_ipos() -> dict:
                     day_tag = "Allotment"
 
                 gmp_pct = _to_float(row.get("gmp_pct"))
-                if gmp_date_iso == today_iso:
+                if latest_gmp_date is None or gmp_date_iso >= latest_gmp_date:
+                    latest_gmp_date = gmp_date_iso
                     latest_gmp_pct = gmp_pct
 
                 upsert_gmp_trend(
