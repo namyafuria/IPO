@@ -26,7 +26,6 @@ import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from . import config, db, live_fetch
-from .gmp_sync import run_gmp_sync
 from .fetchers import ipoji
 from .bhavcopy_sync import run_bhavcopy_sync, backfill_price_gaps, get_trackable_companies
 from .trajectory_predictions_store import save_trajectory_prediction
@@ -137,15 +136,18 @@ def sync_recent_listings():
 
 
 def sync_gmp_trend():
-    """Pass 3: live day-wise GMP history for currently-live IPOs, into
-    gmp_trend. ipogyani only -- see module docstring for why ipowatch is
-    excluded from this automatic path. Bounded/small (only currently-live
-    IPOs), so safe to run every cycle on any host."""
-    try:
-        result = run_gmp_sync(sources=("ipogyani",))
-        logger.info("GMP trend sync: %s", result)
-    except Exception as e:  # noqa: BLE001 -- same "don't take down the batch" pattern as passes 1/2
-        logger.warning("GMP trend sync failed: %s", e)
+    """REMOVED (2026-08-25): ipogyani dropped as GMP source per project
+    decision -- ipoji is now sole GMP feed. Dead as of this fix: ipoji.py's
+    poll_and_save_open_ipos() (Pass 4, sync_ipoji_open_ipos below) already
+    upserts gmp_trend directly off ipoji's own GMP pages, per-company,
+    every poll -- so a separate ipogyani-sourced gmp_trend pass is now
+    redundant AND makes a network call to a source we've stopped using.
+    Function kept as a no-op stub (not deleted) so any external caller
+    that still imports scheduler.sync_gmp_trend doesn't hard-crash; not
+    called from run_sync_once() anymore -- see below. gmp_sync.py itself
+    (sync_ipogyani(), IPOGYANI_* constants/helpers) still needs stripping
+    separately -- not uploaded this session, do that pass next."""
+    logger.info("sync_gmp_trend (ipogyani) is retired -- ipoji.py writes gmp_trend directly. No-op.")
 
 
 def sync_ipoji_open_ipos():
@@ -335,7 +337,6 @@ def run_sync_once():
     # recently-listed companies" job, for free and in bulk, once/day.
     sync_ipoji_open_ipos()
     sync_active_ipos()
-    sync_gmp_trend()
     sync_bhavcopy()
 
 

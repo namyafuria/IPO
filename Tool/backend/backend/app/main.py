@@ -277,10 +277,22 @@ def predict_trajectory_smart(
 
 
 @app.post("/api/sync/gmp")
-def trigger_gmp_sync(sources: Optional[str] = "ipogyani,ipowatch", ipowatch_limit: Optional[int] = None):
+def trigger_gmp_sync(sources: Optional[str] = "ipowatch", ipowatch_limit: Optional[int] = None):
     """Runs the GMP scrapers directly and upserts into gmp_trend.
 
-    `sources`: comma-separated, any of "ipogyani","ipowatch" (default both).
+    VESTIGIAL as of 2026-08-25: ipogyani retired, ipoji sole GMP source
+    (writes gmp_trend directly via sync_ipoji_open_ipos(), not through
+    this route at all). Default flipped from "ipogyani,ipowatch" to
+    "ipowatch" alone so a bare POST here no longer fires an ipogyani call
+    by default. Route left in place only as a manual escape hatch for
+    ipowatch (still opt-in-only, never confirmed working end-to-end --
+    see module docstring). gmp_sync.py itself still has sync_ipogyani()/
+    IPOGYANI_* code physically present -- not uploaded this session, strip
+    it there next to finish the job properly.
+
+    `sources`: comma-separated, any of "ipogyani","ipowatch" (default
+    ipowatch only now; passing "ipogyani" still works mechanically if you
+    explicitly ask for it, but nothing calls it automatically anymore).
     `ipowatch_limit`: caps how many ipowatch pages get scraped this call --
     IMPORTANT on a serverless host: ipowatch's discovery step crawls the
     site's sitemap and can turn up hundreds of pages, which will likely
@@ -410,7 +422,6 @@ def trigger_sync():
 # ---------------------------------------------------------------------------
 @app.post("/api/sync_and_predict")
 def sync_and_predict(
-    sources: Optional[str] = "ipogyani",
     track_days: Optional[int] = None,
     include_trajectory: bool = True,
 ):
@@ -446,8 +457,12 @@ def sync_and_predict(
          -- which MUST be called on a schedule by something external
          (e.g. cron-job.org every 10-15 min) for this route to ever
          return non-empty results on a free-tier deployment.
-      2. run_gmp_sync(sources) -- refreshes gmp_trend and, via the fixed
-         backfill step, ipo_master_records.gmp_percent (see gmp_sync.py).
+      2. REMOVED (2026-08-25): used to call run_gmp_sync(sources) here to
+         refresh gmp_trend/ipo_master_records.gmp_percent via ipogyani.
+         ipogyani is retired -- sync_ipoji_open_ipos() (Pass 4, run as
+         part of POST /api/sync) already writes gmp_trend and
+         ipo_live_tracker.current_gmp_percent directly off ipoji, per
+         company, every poll. Nothing left for this route to do here.
       3. Finds every company currently open for bidding, or listed within
          the last `track_days` days (defaults to config.POST_LISTING_TRACK_DAYS).
       4. Calls predict_for_company() and, if include_trajectory, also
@@ -455,10 +470,7 @@ def sync_and_predict(
          subscription/gmp override, so both read whatever the sync step
          just wrote into the DB.
 
-    `sources`: same comma-separated ipogyani/ipowatch list as /api/sync/gmp
-    (controls step 2 only).
-
-    Returns: {"sync": <run_gmp_sync result>, "predictions": [ {company_name,
+    Returns: {"sync": <placeholder marker, step 2 retired>, "predictions": [ {company_name,
     gain, trajectory, error}, ... ]}. A per-company `error` field (instead
     of raising) means that one company's prediction failed -- the rest of
     the batch still returns. If `predictions` comes back empty or thin,
@@ -492,8 +504,13 @@ def sync_and_predict(
         )
     try:
         sync_active_ipos()
-        src_tuple = tuple(s.strip() for s in sources.split(",") if s.strip())
-        sync_result = run_gmp_sync(sources=src_tuple)
+        # REMOVED (2026-08-25): ipogyani dropped, ipoji sole GMP source.
+        # gmp_trend / ipo_master_records.gmp_percent equivalent
+        # (ipo_live_tracker.current_gmp_percent) now come straight from
+        # sync_ipoji_open_ipos()'s poll -- no separate GMP sync step needed
+        # here. sync_result kept as an empty marker so the response shape
+        # below doesn't break.
+        sync_result = {"status": "skipped -- ipogyani retired, ipoji writes gmp_trend directly"}
     finally:
         _sync_lock.release()
 
