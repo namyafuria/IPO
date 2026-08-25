@@ -141,8 +141,30 @@ def _serialize_tracker_row(conn: sqlite3.Connection, t: sqlite3.Row) -> dict:
     (None if no prediction has been made for it yet). Factored out
     (2026-08-16) so /ipos/open and the new /ipos/awaiting-allotment don't
     duplicate this -- both are "rows from ipo_live_tracker", just filtered
-    to a different slice of the pre-listing lifecycle."""
+    to a different slice of the pre-listing lifecycle.
+
+    GMP FIX (2026-08-25): ipo_live_tracker.current_gmp_percent is written
+    only by the ipoji poller's own upsert and is NOT kept in sync with
+    gmp_trend -- confirmed via /api/debug/ipos/open showing
+    current_gmp_percent: null for Augmont Enterprises while
+    ipo_master_records.gmp_percent was correctly 41.0 (populated by
+    gmp_sync.py's _backfill_master_from_gmp_trend(), which runs every
+    sync and IS the single up-to-date source of GMP in this project).
+    Rather than teach the ipoji writer path (or gmp_sync.py) to also
+    write ipo_live_tracker.current_gmp_percent -- which would leave two
+    GMP columns to keep in sync forever -- this reads gmp_percent from
+    ipo_master_records here and prefers it, falling back to the tracker's
+    own column only if the master row/value is missing (e.g. company not
+    yet matched into ipo_master_records at all)."""
     company = t["company_name"]
+    master_gmp = conn.execute(
+        "SELECT gmp_percent FROM ipo_master_records WHERE company_name = ?",
+        (company,),
+    ).fetchone()
+    gmp_percent = (master_gmp["gmp_percent"] if master_gmp else None)
+    if gmp_percent is None:
+        gmp_percent = t["current_gmp_percent"]
+
     latest_pred = conn.execute(
         """SELECT * FROM live_predictions
            WHERE company_name = ?
@@ -169,7 +191,7 @@ def _serialize_tracker_row(conn: sqlite3.Connection, t: sqlite3.Row) -> dict:
         "current_subscription_qib": t["current_subscription_qib"],
         "current_subscription_hni": t["current_subscription_hni"],
         "current_subscription_rii": t["current_subscription_rii"],
-        "current_gmp_percent": t["current_gmp_percent"],
+        "current_gmp_percent": gmp_percent,
         "as_of": t["as_of"],
         "latest_prediction": pred_dict,
     }
