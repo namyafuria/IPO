@@ -624,6 +624,19 @@ def upsert_live_tracker(
     stated design (no history kept here; gmp_trend/subscription_daywise
     are the history).
 
+    FIX (GMP flapping to null on Open cards): current_gmp_percent used to
+    be `excluded.current_gmp_percent` -- a straight overwrite every poll.
+    Caller (fetch loop, see sync_active_ipos()) passes latest_gmp_pct=None
+    whenever THIS poll's gmp_daily scrape came back empty (today's row not
+    posted yet on ipoji, transient fetch error, etc.), which is normal and
+    frequent, not a real "GMP disappeared" event. Confirmed in production
+    (Augmont Enterprises, 2026-08-25): GMP +41.2% showing correctly at one
+    poll, null a few polls later, though gmp_trend still had the real
+    value the whole time -- table's non-history design meant nothing else
+    preserved it. Now COALESCEs against the existing row's value so a
+    None this-poll doesn't erase a real number from a previous poll; a
+    real new value (including a genuine change) still always overwrites.
+
     FIX (2026-08-16): now also persists listing_date/allotment_date --
     parse_details_page() has always parsed these off the page, but this
     function used to silently drop them (flagged as assumption #1 at the
@@ -663,7 +676,7 @@ def upsert_live_tracker(
             current_subscription_qib = excluded.current_subscription_qib,
             current_subscription_hni = excluded.current_subscription_hni,
             current_subscription_rii = excluded.current_subscription_rii,
-            current_gmp_percent = excluded.current_gmp_percent,
+            current_gmp_percent = COALESCE(excluded.current_gmp_percent, ipo_live_tracker.current_gmp_percent),
             as_of = excluded.as_of
         """,
         {
