@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Badge from './Badge'
 import LiveHistorySection from './LiveHistorySection'
+import CompanyDetailSection from './CompanyDetailSection'
 import { getOpenIpos, ApiError } from '../api'
 import { fmtProb } from '../format'
 
@@ -149,6 +150,7 @@ export default function OpenIposPanel() {
                 )}
 
                 <LiveHistorySection companyName={ipo.company_name} />
+                <CompanyDetailSection companyName={ipo.company_name} />
               </div>
             )
           })}
