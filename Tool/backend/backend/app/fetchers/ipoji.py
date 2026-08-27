@@ -348,12 +348,78 @@ def parse_subscription(slug: str, html: str) -> list[dict]:
     return out
 
 
+# FIX (2026-08-27): ipoji redesigned the live/currently-bidding subscription
+# page at some point after this scraper was built -- confirmed via live
+# fetch of Kwick Forensic Solutions + Lumino Industries (both actively
+# bidding, 2026-08-27) that the page no longer has a single day-wise table
+# with "Day N" row labels at all. Instead it now shows several small
+# category-breakdown tables, one of which (Category | Offer | Applied |
+# Times, rows QIBs/NIIs/BNIIs(>10L)/SNIIs(<10L)/Retail-or-Individual/
+# [Employee]/Total) is the real current aggregate snapshot -- confirmed
+# against ipoji's own displayed UI numbers (3.46x/3.56x Total, small drift
+# only from time between fetch and screenshot, bidding was live/moving).
+# parse_subscription() above is UNCHANGED and kept for whatever pages still
+# use the old day-wise format (if any) -- this is a fallback, tried only
+# when that returns no bidding-day rows, not a replacement.
+def parse_subscription_aggregate(slug: str, html: str) -> dict | None:
+    """Returns a single dict of TODAY's aggregate multiples (no day-wise
+    history exists on this redesigned page), or None if the expected table
+    isn't found. Keys match subscription_daywise's columns directly."""
+    soup = BeautifulSoup(html, "lxml")
+    # "offer" + "applied" (not "offered"/"demand", which is a DIFFERENT
+    # table on the same page -- see module debug session) uniquely
+    # identifies the target table within the first few header cells.
+    table = find_table_by_headers(soup, ["offer", "applied", "times"])
+    if not table:
+        return None
+    rows = table_to_rows(table)
+    if not rows:
+        return None
+    out = {
+        "qib": None,
+        "nii": None,
+        "b_nii": None,
+        "s_nii": None,
+        "rii": None,
+        "overall": None,
+        "employee": None,
+    }
+    found_any = False
+    for r in rows[1:]:  # skip header row
+        # Real page also emits a stray single-cell row here ("Total
+        # Applications 3,964 approx.") that isn't a category row at all --
+        # this length guard skips it rather than mis-parsing it.
+        if len(r) < 4:
+            continue
+        category = r[0].strip().lower()
+        times = _to_float(r[3])
+        if category.startswith("qib"):
+            out["qib"] = times
+        elif category.startswith("nii"):
+            out["nii"] = times
+        elif "bnii" in category:
+            out["b_nii"] = times
+        elif "snii" in category:
+            out["s_nii"] = times
+        elif category.startswith("retail") or category.startswith("individual"):
+            out["rii"] = times
+        elif category.startswith("employee"):
+            out["employee"] = times
+        elif category.startswith("total"):
+            out["overall"] = times
+        else:
+            continue
+        found_any = True
+    return out if found_any else None
+
+
 def fetch_and_parse_ipo(slug: str) -> dict:
     result = {
         "details": None,
         "gmp_intraday": [],
         "gmp_daily": [],
         "subscription": [],
+        "subscription_html": None,
         "fetch_errors": [],
     }
 
@@ -376,6 +442,7 @@ def fetch_and_parse_ipo(slug: str) -> dict:
     time.sleep(DELAY_SECONDS)
     if sub_html:
         result["subscription"] = parse_subscription(slug, sub_html)
+        result["subscription_html"] = sub_html
     else:
         result["fetch_errors"].append("subscription")
 
@@ -876,6 +943,7 @@ def poll_and_save_open_ipos() -> dict:
             today_iso = date.today().isoformat()
             listing_date_iso = _to_iso_date(details.get("listing_date"))
             allotment_date_iso = _to_iso_date(details.get("allotment_date"))
+            open_date_iso = _to_iso_date(details.get("open_date"))
             ipo_price = _parse_price_band_upper(details.get("price_band"))
 
             # FIX (2026-08-16): skip slugs whose detail page gave us nothing
@@ -1011,6 +1079,51 @@ def poll_and_save_open_ipos() -> dict:
                     employee=None,
                     source="ipoji",
                 )
+
+            # FIX (2026-08-27): ipoji's redesign (see parse_subscription_
+            # aggregate() docstring) means the loop above now finds ZERO
+            # bidding-day rows for every actively-bidding IPO, not just an
+            # edge case -- confirmed via live fetch, Kwick Forensic
+            # Solutions and Lumino Industries both had real subscription
+            # data on-page (3.56x / 0.84x respectively) that the old
+            # day-wise loop above could never see. This is the fallback:
+            # only runs when that loop set nothing, uses the same
+            # subscription_html already fetched (no extra network call),
+            # and computes day_number itself from open_date since the new
+            # page states no day number at all -- clamped to >= 1 so a
+            # same-day poll (open_date == today) still writes day 1, not 0
+            # or a negative number from any date/timezone-boundary drift.
+            if latest_sub_total is None and result.get("subscription_html"):
+                agg = parse_subscription_aggregate(slug, result["subscription_html"])
+                if agg is not None:
+                    day_number = 1
+                    if open_date_iso:
+                        try:
+                            d_open = datetime.strptime(open_date_iso, "%Y-%m-%d").date()
+                            d_today = datetime.strptime(today_iso, "%Y-%m-%d").date()
+                            day_number = max(1, (d_today - d_open).days + 1)
+                        except ValueError:
+                            pass
+
+                    latest_sub_total = agg["overall"]
+                    latest_sub_qib = agg["qib"]
+                    latest_sub_rii = agg["rii"]
+                    latest_sub_hni = agg["nii"]
+
+                    upsert_subscription_daywise(
+                        conn,
+                        company_name=company_name,
+                        day_number=day_number,
+                        snapshot_date=today_iso,
+                        qib=agg["qib"],
+                        nii=agg["nii"],
+                        s_nii=agg["s_nii"],
+                        b_nii=agg["b_nii"],
+                        rii=agg["rii"],
+                        overall=agg["overall"],
+                        employee=agg["employee"],
+                        source="ipoji",
+                    )
 
             # --- ipo_live_tracker: single overwritten row for this company ---
             # FIX (2026-08-16): issue_category now comes from discover_open_slugs()

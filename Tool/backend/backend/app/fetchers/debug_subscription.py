@@ -27,26 +27,14 @@ for slug in sys.argv[1:]:
     print(f"total <table> tags in page: {len(all_tables)}")
     table = find_table_by_headers(soup, ["qib", "total"])
     if not table:
-        print("NO TABLE MATCHED headers=['qib','total']")
+        print(
+            "NO TABLE MATCHED headers=['qib','total'] -- dumping FULL rows of every table:"
+        )
         for i, t in enumerate(all_tables):
-            header_cells = t.find_all(["th", "td"], limit=15)
-            header_text = " | ".join(c.get_text(" ", strip=True) for c in header_cells)
-            print(f"  table[{i}]: {header_text}")
-        # dump raw HTML around first "QIB" occurrence (case-insensitive) so we
-        # can see the real markup if it's not inside a <table> at all anymore
-        idx = html.lower().find("qib")
-        if idx == -1:
-            print("literal text 'QIB' not found ANYWHERE in the fetched HTML at all --")
-            print(
-                "possible causes: page needs JS render, or this html is a loading/placeholder shell."
-            )
-            print("first 500 chars of html for sanity check:")
-            print(html[:500])
-        else:
-            print(
-                f"'QIB' found at char offset {idx} -- raw context (400 chars before/after):"
-            )
-            print(html[max(0, idx - 400) : idx + 400])
+            rows = table_to_rows(t)
+            print(f"  --- table[{i}] ({len(rows)} rows) ---")
+            for r in rows:
+                print("   ", r)
         continue
     print("table matched OK")
 
