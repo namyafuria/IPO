@@ -231,7 +231,17 @@ def get_open_ipos():
     whose page ipoji.com itself was slow to move off current-ipo after it
     actually listed. Rows written before this fix (listing_date still
     NULL) fall back to the old close_date-only behaviour until the next
-    poll refreshes them."""
+    poll refreshes them.
+
+    FIX (2026-08-27): also excludes rows whose open_date is still in the
+    future. ipoji.com's "current" status covers actively-bidding AND
+    not-yet-open-but-announced IPOs together (confirmed: Complete Sports
+    And Management / ESDS Software, both open_date 2026-08-28, showed up
+    here on 2026-08-27 with real subscription tables not existing yet
+    anywhere -- not a scrape bug, bidding genuinely hadn't started). These
+    belong in /ipos/upcoming (added below), not here -- a company with no
+    real data yet shouldn't render as "waiting on subscription data" like
+    it's stuck; it hasn't started."""
     today = date.today().isoformat()
     conn = _get_conn()
     try:
@@ -239,10 +249,46 @@ def get_open_ipos():
             """SELECT * FROM ipo_live_tracker
                WHERE (close_date IS NULL OR close_date = '' OR close_date >= ?)
                  AND (listing_date IS NULL OR listing_date = '' OR listing_date > ?)
+                 AND (open_date IS NULL OR open_date = '' OR open_date <= ?)
                ORDER BY as_of DESC""",
-            (today, today),
+            (today, today, today),
         ).fetchall()
         out = [_serialize_tracker_row(conn, t) for t in trackers]
+        return {"count": len(out), "ipos": out}
+    finally:
+        conn.close()
+
+
+@router.get("/ipos/upcoming")
+def get_upcoming_ipos():
+    """Added 2026-08-27, companion to the open_date filter above: IPOs
+    ipoji.com already lists as "current" but whose bidding hasn't opened
+    yet. Same source table/shape as /ipos/open (minus latest_prediction --
+    a prediction is never possible before day 1 subscription data exists,
+    so it's omitted here rather than always being null noise), just the
+    flip side of the new open_date filter. Companies with a NULL/blank
+    open_date are NOT included here (can't tell if they're upcoming or a
+    data gap) -- they'll appear once the poller fills open_date in."""
+    today = date.today().isoformat()
+    conn = _get_conn()
+    try:
+        trackers = conn.execute(
+            """SELECT * FROM ipo_live_tracker
+               WHERE open_date IS NOT NULL AND open_date != '' AND open_date > ?
+               ORDER BY open_date ASC""",
+            (today,),
+        ).fetchall()
+        out = []
+        for t in trackers:
+            out.append({
+                "company_name": t["company_name"],
+                "issue_category": t["issue_category"],
+                "sector": t["sector"],
+                "open_date": t["open_date"],
+                "close_date": t["close_date"],
+                "price_band_upper": t["price_band_upper"],
+                "issue_size_cr": t["issue_size_cr"],
+            })
         return {"count": len(out), "ipos": out}
     finally:
         conn.close()

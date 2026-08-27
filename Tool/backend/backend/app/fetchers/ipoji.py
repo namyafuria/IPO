@@ -99,7 +99,10 @@ MAX_RETRIES = 3
 
 SLUG_RE = re.compile(r"/ipo/([a-z0-9\-]+-ipo)\b", re.IGNORECASE)
 EXCLUDE_SLUGS = {"current-ipo", "upcoming-ipo", "listed-ipo"}
-CURRENT_PAGES = ["/ipo/current-ipo", "/sme-ipo/current-ipo"]  # kept only as dead-URL history; no longer fetched
+CURRENT_PAGES = [
+    "/ipo/current-ipo",
+    "/sme-ipo/current-ipo",
+]  # kept only as dead-URL history; no longer fetched
 
 # FIX (2026-08-16): /ipo/current-ipo and /sme-ipo/current-ipo now 301-redirect
 # (confirmed via curl -- both return "301 Moved Permanently") into a single
@@ -157,7 +160,9 @@ def clean_num(text: str) -> str:
 def find_table_by_headers(soup: BeautifulSoup, must_contain: list[str]):
     for table in soup.find_all("table"):
         header_cells = table.find_all(["th", "td"], limit=15)
-        header_text = " ".join(c.get_text(" ", strip=True).lower() for c in header_cells)
+        header_text = " ".join(
+            c.get_text(" ", strip=True).lower() for c in header_cells
+        )
         if all(term.lower() in header_text for term in must_contain):
             return table
     return None
@@ -166,7 +171,9 @@ def find_table_by_headers(soup: BeautifulSoup, must_contain: list[str]):
 def table_to_rows(table) -> list[list[str]]:
     rows = []
     for tr in table.find_all("tr"):
-        cells = [clean_num(td.get_text(" ", strip=True)) for td in tr.find_all(["td", "th"])]
+        cells = [
+            clean_num(td.get_text(" ", strip=True)) for td in tr.find_all(["td", "th"])
+        ]
         if cells:
             rows.append(cells)
     return rows
@@ -174,7 +181,28 @@ def table_to_rows(table) -> list[list[str]]:
 
 def parse_details_page(slug: str, html: str) -> dict:
     soup = BeautifulSoup(html, "lxml")
-    text_blocks = [t.get_text(" ", strip=True) for t in soup.find_all(["div", "li", "p"])]
+    # FIX (2026-08-27): this scan used to only look at div/li/p tags -- never
+    # table cells. Confirmed on real ipoji markup (gmp_daily, subscription)
+    # that this site renders numeric data in <table> elements; PE
+    # ratio/Debt-Equity/Anchor allocation being permanently None (while ROE,
+    # apparently sitting in prose text, worked) is consistent with those
+    # fields living in a financial-highlights table this scan never reached.
+    # Including td/th text too costs nothing and can only help matches.
+    text_blocks = [
+        t.get_text(" ", strip=True)
+        for t in soup.find_all(["div", "li", "p", "td", "th"])
+    ]
+    # FIX (2026-08-27): confirmed on real Sumax Engineering page -- the
+    # "...with ₹53.4 crore issue size..." sentence used by the fallback
+    # pattern below lives ONLY in <meta name="description">, never in any
+    # visible div/li/p/td/th tag. The fallback regex was correct but
+    # useless since full_text never contained the text to match against.
+    # ipoji consistently writes a real summary sentence here (price band +
+    # issue size + open/close dates), so it's a reliable extra source, not
+    # a hack for this one company.
+    meta_desc = soup.find("meta", attrs={"name": "description"})
+    if meta_desc and meta_desc.get("content"):
+        text_blocks.append(meta_desc["content"])
     full_text = "\n".join(text_blocks)
 
     record = {"slug": slug}
@@ -207,6 +235,16 @@ def parse_details_page(slug: str, html: str) -> dict:
         m = re.search(pattern, full_text)
         record[field] = m.group(1).strip() if m else None
 
+    # FIX (2026-08-27): confirmed on real Sumax Engineering page -- SME
+    # pages sometimes state this as "...with ₹53.4 crore issue size."
+    # (amount BEFORE the label, "crore" spelled out, not "Issue size: ₹X
+    # Cr"). Only used as a fallback since it's a looser/riskier match --
+    # only fires when the primary label-first pattern above found nothing.
+    if not record["issue_size"]:
+        m = re.search(r"₹\s*([\d,.]+)\s*crore\s+issue\s+size", full_text, re.IGNORECASE)
+        if m:
+            record["issue_size"] = f"{m.group(1).strip()} Cr"
+
     # FIX (2026-08-16): this used to be a text-scan of the page itself
     # ("SME" in full_text[:2000] else "Mainboard"), which false-positived
     # on every page -- ipoji's own nav/breadcrumb links ("Mainboard IPO |
@@ -219,7 +257,10 @@ def parse_details_page(slug: str, html: str) -> dict:
     # slug debugging), not used by poll_and_save_open_ipos() anymore.
     record["ipo_type"] = "SME" if "SME" in full_text[:2000] else "Mainboard"
 
-    m = re.search(r"IPO Dates\s*\n?\s*([A-Za-z]+ \d{1,2}, \d{4})\s*[–\-]\s*([A-Za-z]+ \d{1,2}, \d{4})", full_text)
+    m = re.search(
+        r"IPO Dates\s*\n?\s*([A-Za-z]+ \d{1,2}, \d{4})\s*[–\-]\s*([A-Za-z]+ \d{1,2}, \d{4})",
+        full_text,
+    )
     if m:
         record["open_date"], record["close_date"] = m.group(1), m.group(2)
 
@@ -239,14 +280,16 @@ def parse_gmp_daily(slug: str, html: str) -> list[dict]:
     for r in data_rows:
         if len(r) < 4:
             continue
-        out.append({
-            "slug": slug,
-            "date": r[0],
-            "gmp": r[1],
-            "change": r[2] if len(r) > 2 else None,
-            "gmp_pct": r[3] if len(r) > 3 else None,
-            "indicative_listing_price": r[4] if len(r) > 4 else None,
-        })
+        out.append(
+            {
+                "slug": slug,
+                "date": r[0],
+                "gmp": r[1],
+                "change": r[2] if len(r) > 2 else None,
+                "gmp_pct": r[3] if len(r) > 3 else None,
+                "indicative_listing_price": r[4] if len(r) > 4 else None,
+            }
+        )
     return out
 
 
@@ -263,14 +306,16 @@ def parse_gmp_intraday(slug: str, html: str) -> list[dict]:
     for r in data_rows:
         if len(r) < 4:
             continue
-        out.append({
-            "slug": slug,
-            "datetime": r[0],
-            "gmp": r[1],
-            "change": r[2] if len(r) > 2 else None,
-            "gmp_pct": r[3] if len(r) > 3 else None,
-            "indicative_price": r[4] if len(r) > 4 else None,
-        })
+        out.append(
+            {
+                "slug": slug,
+                "datetime": r[0],
+                "gmp": r[1],
+                "change": r[2] if len(r) > 2 else None,
+                "gmp_pct": r[3] if len(r) > 3 else None,
+                "indicative_price": r[4] if len(r) > 4 else None,
+            }
+        )
     return out
 
 
@@ -288,21 +333,29 @@ def parse_subscription(slug: str, html: str) -> list[dict]:
         if len(r) < 3:
             continue
         is_day_row = bool(re.match(r"Day\s*\d+", r[0], re.IGNORECASE))
-        out.append({
-            "slug": slug,
-            "as_on": r[0],
-            "is_bidding_day": is_day_row,
-            "qib": r[1] if len(r) > 1 else None,
-            "nii_or_bhni": r[2] if len(r) > 2 else None,
-            "shni": r[3] if len(r) > 3 else None,
-            "retail": r[4] if len(r) > 4 else None,
-            "total": r[-1],
-        })
+        out.append(
+            {
+                "slug": slug,
+                "as_on": r[0],
+                "is_bidding_day": is_day_row,
+                "qib": r[1] if len(r) > 1 else None,
+                "nii_or_bhni": r[2] if len(r) > 2 else None,
+                "shni": r[3] if len(r) > 3 else None,
+                "retail": r[4] if len(r) > 4 else None,
+                "total": r[-1],
+            }
+        )
     return out
 
 
 def fetch_and_parse_ipo(slug: str) -> dict:
-    result = {"details": None, "gmp_intraday": [], "gmp_daily": [], "subscription": [], "fetch_errors": []}
+    result = {
+        "details": None,
+        "gmp_intraday": [],
+        "gmp_daily": [],
+        "subscription": [],
+        "fetch_errors": [],
+    }
 
     detail_html = fetch(f"{BASE}/ipo/{slug}")
     time.sleep(DELAY_SECONDS)
@@ -392,7 +445,8 @@ def _check_open_slugs_alert(current_count: int) -> None:
             "ALERT discover_open_slugs: count dropped from %d to %d (>%d%% drop) "
             "vs the previous poll -- possible scrape break, check ipoji.com/ipo "
             "manually before trusting this cycle's Open section.",
-            _last_known_good_slug_count, current_count,
+            _last_known_good_slug_count,
+            current_count,
             int(_OPEN_SLUGS_DROP_THRESHOLD * 100),
         )
     if current_count > 0:
@@ -403,6 +457,7 @@ def _check_open_slugs_alert(current_count: int) -> None:
 # Section 2 — cleaning helpers (new: the old scripts wrote raw strings to CSV,
 # the DB columns are REAL/TEXT-typed and need real conversion)
 # ---------------------------------------------------------------------------
+
 
 def _to_float(s: str | None) -> float | None:
     """'21.48%' -> 21.48, '1,49,13,000' -> 14913000.0, '-5' -> -5.0, '-' -> None,
@@ -425,8 +480,38 @@ def _to_float(s: str | None) -> float | None:
 
 _MONTH_DATE_RE = re.compile(r"([A-Za-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})")
 _DMY_DASH_RE = re.compile(r"(\d{1,2})[-/]([A-Za-z]{3,})[-/](\d{4})")
-_MONTHS = {m.lower()[:3]: i for i, m in enumerate(
-    ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]) if m}
+# FIX (2026-08-27): gmp_daily table's real date format is "27 Aug 2026" --
+# day, space, month, space, year, NO comma and NO dash/slash. Neither regex
+# above matches that shape (confirmed via live scrape of Symbiotec
+# Pharmalab's gmp_daily rows, all in this exact format) so _to_iso_date()
+# silently returned None for EVERY gmp row -> gmp_date_iso always None ->
+# upsert_gmp_trend()/latest_gmp_pct block below skipped every row. This is
+# the real root cause of GMP always showing "--" on Open cards -- not a
+# data-availability gap, and not the "most recent row" logic fixed on
+# 2026-08-22 (that fix never got a chance to run, since no date ever parsed
+# at all).
+_DMY_SPACE_RE = re.compile(r"(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})")
+_MONTHS = {
+    m.lower()[:3]: i
+    for i, m in enumerate(
+        [
+            "",
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+        ]
+    )
+    if m
+}
 
 
 def _to_iso_date(s: str | None) -> str | None:
@@ -450,6 +535,15 @@ def _to_iso_date(s: str | None) -> str | None:
             return f"{year}-{mon_num:02d}-{int(day):02d}"
 
     m = _DMY_DASH_RE.search(s)
+    if m:
+        day, mon, year = m.groups()
+        mon_num = _MONTHS.get(mon.lower()[:3])
+        if mon_num:
+            return f"{year}-{mon_num:02d}-{int(day):02d}"
+
+    # FIX (2026-08-27): "27 Aug 2026" space-separated form -- see comment at
+    # _DMY_SPACE_RE definition above.
+    m = _DMY_SPACE_RE.search(s)
     if m:
         day, mon, year = m.groups()
         mon_num = _MONTHS.get(mon.lower()[:3])
@@ -500,6 +594,7 @@ def _parse_price_band_upper(price_band: str | None) -> float | None:
 # ---------------------------------------------------------------------------
 # Section 3 — upserts (Step 2's actual new logic)
 # ---------------------------------------------------------------------------
+
 
 def upsert_gmp_trend(
     conn: sqlite3.Connection,
@@ -739,6 +834,7 @@ def mark_as_listed(conn: sqlite3.Connection, company_name: str, as_of: str) -> N
 # Section 4 — orchestration: one full poll cycle, saved to the DB
 # ---------------------------------------------------------------------------
 
+
 def poll_and_save_open_ipos() -> dict:
     """The function Step 3's scheduler calls once an hour (and that the
     manual /api/sync route can call on demand). Discovers currently-open
@@ -766,11 +862,15 @@ def poll_and_save_open_ipos() -> dict:
         for slug, issue_category in sorted(open_slugs.items()):
             result = fetch_and_parse_ipo(slug)
             if result["fetch_errors"]:
-                summary["fetch_errors"].append({"slug": slug, "pages": result["fetch_errors"]})
+                summary["fetch_errors"].append(
+                    {"slug": slug, "pages": result["fetch_errors"]}
+                )
 
             company_name, matched = resolve_company_name(slug)
             if not matched:
-                summary["unresolved_company_names"].append({"slug": slug, "guessed_name": company_name})
+                summary["unresolved_company_names"].append(
+                    {"slug": slug, "guessed_name": company_name}
+                )
 
             details = result["details"] or {}
             today_iso = date.today().isoformat()
@@ -794,17 +894,23 @@ def poll_and_save_open_ipos() -> dict:
             # listing_date, price band, or a real bidding-day subscription
             # row -- genuinely-open IPOs always have at least one of these
             # even early on day 1.
-            has_bidding_row = any(r.get("is_bidding_day") for r in result["subscription"])
+            has_bidding_row = any(
+                r.get("is_bidding_day") for r in result["subscription"]
+            )
             has_any_signal = bool(
-                details.get("open_date") or details.get("close_date")
-                or details.get("listing_date") or ipo_price or has_bidding_row
+                details.get("open_date")
+                or details.get("close_date")
+                or details.get("listing_date")
+                or ipo_price
+                or has_bidding_row
             )
             if not has_any_signal:
                 summary.setdefault("skipped_no_data", []).append(slug)
                 logger.warning(
                     "Skipping %r -- detail/subscription pages returned no usable "
                     "fields at all (fetch_errors=%r); not saving as an open IPO.",
-                    slug, result["fetch_errors"],
+                    slug,
+                    result["fetch_errors"],
                 )
                 continue
 
@@ -918,12 +1024,16 @@ def poll_and_save_open_ipos() -> dict:
                 issue_category=issue_category,
                 sector=None,  # not exposed by parse_details_page; leave for a later enrichment pass
                 status="open",
-                open_date=_to_iso_date(details.get("open_date")) or details.get("open_date"),
-                close_date=_to_iso_date(details.get("close_date")) or details.get("close_date"),
+                open_date=_to_iso_date(details.get("open_date"))
+                or details.get("open_date"),
+                close_date=_to_iso_date(details.get("close_date"))
+                or details.get("close_date"),
                 listing_date=listing_date_iso or details.get("listing_date"),
                 allotment_date=allotment_date_iso or details.get("allotment_date"),
                 price_band_upper=ipo_price,
-                issue_size_cr=_to_float((details.get("issue_size") or "").replace("Cr", "")),
+                issue_size_cr=_to_float(
+                    (details.get("issue_size") or "").replace("Cr", "")
+                ),
                 current_subscription_total=latest_sub_total,
                 current_subscription_qib=latest_sub_qib,
                 current_subscription_hni=latest_sub_hni,
@@ -959,7 +1069,9 @@ def poll_and_save_open_ipos() -> dict:
             except PredictionError as e:
                 logger.info("Live prediction skipped for %r: %s", company_name, e)
             except Exception:
-                logger.exception("Unexpected error computing live prediction for %r", company_name)
+                logger.exception(
+                    "Unexpected error computing live prediction for %r", company_name
+                )
 
             summary["companies_saved"].append(company_name)
 
@@ -988,7 +1100,9 @@ def poll_and_save_open_ipos() -> dict:
         # these don't leak back into the Open section -- that filter lives
         # in db.py/main.py, not here; check it if listed companies start
         # reappearing in /ipos/open.
-        cur = conn.execute("SELECT company_name FROM ipo_live_tracker WHERE status != 'listed'")
+        cur = conn.execute(
+            "SELECT company_name FROM ipo_live_tracker WHERE status != 'listed'"
+        )
         tracked = {r["company_name"] for r in cur.fetchall()}
         still_open = set(summary["companies_saved"])
         for stale_name in tracked - still_open:
@@ -1003,4 +1117,5 @@ def poll_and_save_open_ipos() -> dict:
 
 if __name__ == "__main__":
     import json
+
     print(json.dumps(poll_and_save_open_ipos(), indent=2))

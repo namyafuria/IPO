@@ -111,6 +111,14 @@ export function getOpenIpos() {
   return request('/ipos/open')
 }
 
+// Companies ipoji.com already lists as "current" but whose bidding hasn't
+// opened yet (routers_live.py GET /ipos/upcoming, added 2026-08-27 as the
+// flip side of /ipos/open's new open_date filter). No predictions/GMP/sub
+// fields -- none can exist before day 1 -- just roster + basic terms.
+export function getUpcomingIpos() {
+  return request('/ipos/upcoming')
+}
+
 // Step 9: companies still inside their Day1-10 trajectory window (real NSE
 // trading days, not calendar days -- see routers_live.py). Returns the
 // roster only; each card fetches its own compact prediction via
