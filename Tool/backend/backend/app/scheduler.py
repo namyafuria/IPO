@@ -26,7 +26,7 @@ import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from . import config, db, live_fetch
-from .fetchers import ipoji
+from .fetchers import ipoji, ipoguru_kpi
 from .bhavcopy_sync import run_bhavcopy_sync, backfill_price_gaps, get_trackable_companies
 from .trajectory_predictions_store import save_trajectory_prediction
 from .predict_trajectory import TrajectoryPredictionError
@@ -240,6 +240,34 @@ def sync_bhavcopy():
     return {"sync": sync_result, "gap_fill": gap_result, "trajectory_saves": trajectory_result}
 
 
+def sync_ipoguru_kpis():
+    """Pass 6: IPO Guru KPI fill. ipoji.com (the live source, Pass 4) has
+    no Company-Financials/Objects-of-Issue data -- this pass covers that
+    gap by reading ipo_live_tracker (already populated earlier in this
+    same cycle by sync_ipoji_open_ipos(), same ordering dependency as
+    sync_active_ipos() above) and fetching ipoguru.in's KPI tables for
+    any company not already in ipo_guru_kpi_raw. Also catches currently-
+    open IPOs that predate this pass -- anything already sitting in
+    ipo_live_tracker without a KPI row gets picked up the same way,
+    whether it's brand-new this cycle or has been open for a while.
+
+    Only fetches what's missing (diffs against ipo_guru_kpi_raw each
+    run), so repeat cycles are cheap once the backlog is caught up --
+    same 'safe/cheap to call every cycle' property as the rest of this
+    module. Same 'one bad company shouldn't stop the batch' resilience
+    pattern as passes 1-5 (see ipoguru_kpi.sync_missing_kpis())."""
+    try:
+        result = ipoguru_kpi.sync_missing_kpis()
+        logger.info(
+            "IPO Guru KPI sync: %d fetched, %d failed, %d already had KPI data.",
+            result["fetched"], result["failed"], result["skipped_existing"],
+        )
+        return result
+    except Exception as e:  # noqa: BLE001 -- same "don't take down the batch" pattern as passes 1-5
+        logger.warning("IPO Guru KPI sync failed: %s", e)
+        return None
+
+
 def save_trajectory_predictions_for(names, reason: str = "requested") -> dict:
     """Shared helper: for each company name given, resolves it via
     db.find_company() and calls save_trajectory_prediction() to compute +
@@ -337,6 +365,7 @@ def run_sync_once():
     # recently-listed companies" job, for free and in bulk, once/day.
     sync_ipoji_open_ipos()
     sync_active_ipos()
+    sync_ipoguru_kpis()
     sync_bhavcopy()
 
 

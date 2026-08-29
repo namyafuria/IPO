@@ -1,5 +1,6 @@
 import { Section, Field } from './DataField'
 import Badge from './Badge'
+import PredictedVsActualSection from './PredictedVsActualSection'
 import { fmtCr, fmtPct, fmtDate, gainClass } from '../format'
 
 export default function CompanyPanel({ data, onRefresh, refreshing }) {
@@ -44,53 +45,73 @@ export default function CompanyPanel({ data, onRefresh, refreshing }) {
       </div>
 
       <div className="flex flex-col gap-5">
-        <Section title="Issue overview">
-          <Field label="Issue size" value={fmtCr(record.issue_size_cr)} />
-          <Field label="Price band (upper)" value={record.price_band_upper != null ? `₹${record.price_band_upper}` : '—'} />
-          <Field label="PE ratio" value={record.pe_ratio ?? '—'} />
-          <Field label="ROE" value={fmtPct(record.roe, 1)} />
-          <Field label="Debt / Equity" value={record.debt_equity ?? '—'} />
-          <Field label="Anchor allocation" value={fmtPct(record.anchor_allocation_pct, 1)} />
-        </Section>
+        {(record.issue_size_cr != null || record.price_band_upper != null || record.pe_ratio != null ||
+          record.roe != null || record.debt_equity != null || record.anchor_allocation_pct != null) && (
+          <Section title="Issue overview">
+            {record.issue_size_cr != null && <Field label="Issue size" value={fmtCr(record.issue_size_cr)} />}
+            {record.price_band_upper != null && <Field label="Price band (upper)" value={`₹${record.price_band_upper}`} />}
+            {record.pe_ratio != null && <Field label="PE ratio" value={record.pe_ratio} />}
+            {record.roe != null && <Field label="ROE" value={fmtPct(record.roe, 1)} />}
+            {record.debt_equity != null && <Field label="Debt / Equity" value={record.debt_equity} />}
+            {record.anchor_allocation_pct != null && <Field label="Anchor allocation" value={fmtPct(record.anchor_allocation_pct, 1)} />}
+          </Section>
+        )}
 
         <Section title="Subscription & GMP">
-          <Field label="QIB" value={record.subscription_qib != null ? `${record.subscription_qib}×` : '—'} />
-          <Field label="HNI" value={record.subscription_hni != null ? `${record.subscription_hni}×` : '—'} />
-          <Field label="RII" value={record.subscription_rii != null ? `${record.subscription_rii}×` : '—'} />
-          <Field label="Total" value={record.subscription_total != null ? `${record.subscription_total}×` : '—'} valueClassName="text-amber" />
-          <Field label="GMP" value={fmtPct(record.gmp_percent, 1)} valueClassName={gainClass(record.gmp_percent)} />
+          {record.subscription_qib != null && <Field label="QIB" value={`${record.subscription_qib}×`} />}
+          {record.subscription_hni != null && <Field label="HNI" value={`${record.subscription_hni}×`} />}
+          {record.subscription_rii != null && <Field label="RII" value={`${record.subscription_rii}×`} />}
+          {record.subscription_total != null && <Field label="Total" value={`${record.subscription_total}×`} valueClassName="text-amber" />}
+          {record.gmp_percent != null && <Field label="GMP" value={fmtPct(record.gmp_percent, 1)} valueClassName={gainClass(record.gmp_percent)} />}
         </Section>
 
         <Section title="Timeline">
-          <Field label="Open" value={fmtDate(record.open_date)} />
-          <Field label="Close" value={fmtDate(record.close_date)} />
-          <Field label="Allotment" value={fmtDate(record.allotment_date)} />
-          <Field label="Listing" value={fmtDate(record.listing_date)} />
+          {record.open_date && <Field label="Open" value={fmtDate(record.open_date)} />}
+          {record.close_date && <Field label="Close" value={fmtDate(record.close_date)} />}
+          {record.allotment_date && <Field label="Allotment" value={fmtDate(record.allotment_date)} />}
+          {record.listing_date && <Field label="Listing" value={fmtDate(record.listing_date)} />}
         </Section>
 
         {(record.price_day1 || record.price_day2 || record.price_day5 || record.price_day10) && (
           <Section title="Post-listing close price">
-            <Field label="Day 1" value={record.price_day1 != null ? `₹${record.price_day1}` : '—'} />
-            <Field label="Day 2" value={record.price_day2 != null ? `₹${record.price_day2}` : '—'} />
-            <Field label="Day 3" value={record.price_day3 != null ? `₹${record.price_day3}` : '—'} />
-            <Field label="Day 5" value={record.price_day5 != null ? `₹${record.price_day5}` : '—'} />
-            <Field label="Day 10" value={record.price_day10 != null ? `₹${record.price_day10}` : '—'} />
+            {record.price_day1 != null && <Field label="Day 1" value={`₹${record.price_day1}`} />}
+            {record.price_day2 != null && <Field label="Day 2" value={`₹${record.price_day2}`} />}
+            {record.price_day3 != null && <Field label="Day 3" value={`₹${record.price_day3}`} />}
+            {record.price_day5 != null && <Field label="Day 5" value={`₹${record.price_day5}`} />}
+            {record.price_day10 != null && <Field label="Day 10" value={`₹${record.price_day10}`} />}
           </Section>
         )}
+
+        {/* Prediction chart: reuses the same predicted-vs-actual component
+            the Listed tab already uses -- one real chart, not a second
+            source of truth. Shows nothing (renders its own empty/error
+            state) if this company has no saved trajectory prediction yet. */}
+        <Section title="Prediction">
+          <PredictedVsActualSection companyName={record.company_name} />
+        </Section>
 
         {(record.current_price != null) && (
           <Section title="Live tracking">
             <Field label="Current price" value={`₹${record.current_price}`} />
-            <Field label="Current gain" value={fmtPct(record.current_gain_pct)} valueClassName={gainClass(record.current_gain_pct)} />
-            <Field label="As of" value={fmtDate(record.current_price_asof)} />
+            {record.current_gain_pct != null && <Field label="Current gain" value={fmtPct(record.current_gain_pct)} valueClassName={gainClass(record.current_gain_pct)} />}
+            {record.current_price_asof && <Field label="As of" value={fmtDate(record.current_price_asof)} />}
           </Section>
         )}
 
-        <Section title="Identifiers">
-          <Field label="ISIN" value={record.isin || '—'} />
-          <Field label="BSE code" value={record.bse_script_code || '—'} />
-          <Field label="NSE symbol" value={record.nse_symbol || '—'} />
-        </Section>
+        {(record.isin || record.bse_script_code || record.nse_symbol) && (
+          <Section title="Identifiers">
+            {record.isin && <Field label="ISIN" value={record.isin} />}
+            {/* Real-world constraint (confirmed via multiple SME cases):
+                an SME IPO lists on exactly one exchange, so it only ever
+                has ONE of these two populated -- showing both with a '-'
+                placeholder was misleading, not actually a missing-data
+                bug. Mainboard IPOs genuinely can have both (dual-listed on
+                NSE+BSE) -- this shows whichever field(s) are real, no
+                artificial single-pick. */}
+            {record.bse_script_code && <Field label="BSE code" value={record.bse_script_code} />}
+            {record.nse_symbol && <Field label="NSE symbol" value={record.nse_symbol} />}
+          </Section>
+        )}
       </div>
     </div>
   )

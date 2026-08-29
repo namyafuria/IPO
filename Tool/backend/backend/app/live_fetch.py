@@ -9,6 +9,10 @@ Split of responsibility (per project decision):
                   module does not hit ipoji.com over the network itself.
   - Indian API:   post-listing data -- sector, PE/ROE/debt-equity, and the
                   day1/2/3/5/10 + current price trail once the company lists.
+  - ipogyani.com: KPI-only (pe_ratio/roe/debt_equity + extras), RHP-sourced,
+                  pre-listing. NOT used for GMP/subscription (that's ipoji's
+                  job, see FIX LOG 5) -- re-added 2026-08-27 for this
+                  narrower role only.
 
 fetch_and_upsert(company_name) is the single entry point both the on-demand
 "search for a company we don't have" path and the background sync job call.
@@ -123,6 +127,7 @@ import logging
 
 from . import db
 from .fetchers import indianapi
+from .fetchers.ipogyani import fetch_kpi_for_company
 
 logger = logging.getLogger("ipo_tool.live_fetch")
 
@@ -250,6 +255,18 @@ def _ipoji_partial(company_name: str) -> dict:
     return {}
 
 
+def _ipogyani_partial(company_name: str) -> dict:
+    """KPI-only fetch (pe_ratio, roe, debt_equity + extras) from ipogyani's
+    RHP-sourced table. Pre-listing data by nature, not gated on
+    _already_listed -- unlike ipoji/Indian API this isn't subscription/GMP
+    (ipogyani was only dropped from THAT role, see FIX LOG 5)."""
+    try:
+        return fetch_kpi_for_company(company_name) or {}
+    except Exception as e:  # noqa: BLE001 -- same tolerant pattern as other sources
+        logger.warning("ipogyani KPI fetch failed for %r: %s", company_name, e)
+        return {}
+
+
 def _already_listed(listing_date: str | None) -> bool:
     """True if `listing_date` is set and is today or earlier -- i.e. the
     IPO has actually listed, bidding is long closed, and ipoji's
@@ -338,6 +355,12 @@ def fetch_and_upsert(company_name: str, ipoji_row: dict | None = None) -> dict:
     # post-listing data got fetched.
     listing_date_for_gate = ipoji_partial.get("listing_date") or existing.get("listing_date")
 
+    # KPI-only, cheap-gated on "don't already have it" so a live company's
+    # per-sync fetch_and_upsert() call doesn't re-scrape ipogyani every time.
+    ipogyani_partial = {}
+    if existing.get("pe_ratio") is None:
+        ipogyani_partial = _ipogyani_partial(company_name)
+
     indianapi_partial = {}
     price_partial = {}
     if _already_listed(listing_date_for_gate):
@@ -355,10 +378,13 @@ def fetch_and_upsert(company_name: str, ipoji_row: dict | None = None) -> dict:
             "date unknown); Indian API only has post-listing data.", company_name,
         )
 
-    if not ipoji_partial and not indianapi_partial and not existing_record:
+    if not ipoji_partial and not ipogyani_partial and not indianapi_partial and not existing_record:
         raise LookupError(f"No data found for '{company_name}' from any source, and it isn't in the DB.")
 
-    merged = _merge(existing, ipoji_partial, indianapi_partial, price_partial)
+    # ipogyani before indianapi: post-listing indianapi PE/ROE (real
+    # traded-price-based) should win over ipogyani's RHP-time figures if
+    # both are present.
+    merged = _merge(existing, ipoji_partial, ipogyani_partial, indianapi_partial, price_partial)
     merged["company_name"] = merged.get("company_name") or company_name
     merged["last_updated"] = datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z"
     if merged.get("current_price") is not None:

@@ -21,6 +21,16 @@ class IPORecord(BaseModel):
     pe_ratio: Optional[float] = None
     roe: Optional[float] = None
     debt_equity: Optional[float] = None
+    roce: Optional[float] = None
+    ronw: Optional[float] = None
+    pat_margin: Optional[float] = None
+    ebitda_margin: Optional[float] = None
+    price_to_book: Optional[float] = None
+    eps_pre: Optional[float] = None
+    eps_post: Optional[float] = None
+    promoter_holding_pre: Optional[float] = None
+    promoter_holding_post: Optional[float] = None
+    market_cap: Optional[float] = None
     subscription_qib: Optional[float] = None
     subscription_hni: Optional[float] = None
     subscription_rii: Optional[float] = None
