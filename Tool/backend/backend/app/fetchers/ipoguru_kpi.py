@@ -40,8 +40,9 @@ DELAY_SECONDS = 1.5
 _rp = urllib.robotparser.RobotFileParser()
 _rp.set_url(f"{BASE}/robots.txt")
 try:
-    _rp.read()
-except Exception:  # noqa: BLE001 -- robots fetch failing shouldn't block the whole sync
+    resp = requests.get(f"{BASE}/robots.txt", headers=HEADERS, timeout=5)
+    _rp.parse(resp.text.splitlines())
+except Exception:
     logger.warning("Could not read ipoguru.in/robots.txt -- proceeding without a robots check this run.")
 
 
